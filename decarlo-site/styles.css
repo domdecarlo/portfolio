@@ -1,0 +1,1018 @@
+/* ============================================================
+   DECARLO.DESIGN — portfolio
+   Raw / utilitarian aesthetic: near-black on white,
+   monospace labels, tiny captions, generous whitespace.
+   ============================================================ */
+
+:root {
+  --ink: #111111;
+  --paper: #ffffff;
+  --muted: #8a8a8a;
+  --hairline: #e6e6e6;
+  --topbar-h: 64px;
+  --left-w: 25vw;
+  --divider-w: 7px;
+  --mono: "SFMono-Regular", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --grotesk: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--grotesk);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------------- TOP BAR ---------------- */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  min-height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 14px;
+  background: var(--paper);
+  z-index: 100;
+}
+
+/* LEFT: logo mark + wordmark */
+.topbar .tb-left { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.topbar .tb-left:hover { text-decoration: none; }
+.topbar .tb-logo { height: 30px; width: auto; display: block; }
+.topbar .tb-logo-mark { font-size: 22px; line-height: 1; }
+.topbar .wordmark {
+  font-family: var(--grotesk);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* CENTER: flexible info + secondary links zone */
+.topbar .tb-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.topbar .tb-info {
+  font-family: var(--grotesk);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  max-width: 62ch;
+}
+.topbar .tb-info strong { font-weight: 700; }
+.topbar .tb-center-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* RIGHT: main nav */
+.topbar .tb-nav {
+  display: flex;
+  gap: 16px;
+  flex: 0 0 auto;
+  font-family: var(--grotesk);
+  font-size: 12px;
+  font-weight: 500;
+}
+.topbar .tb-nav a { color: var(--ink); }
+.topbar .tb-nav a.active { color: var(--muted); }
+.topbar .tb-nav a:hover { text-decoration: none; color: var(--muted); }
+
+/* nav dropdown (an item with children). The padding-bottom + negative margin
+   extends the hover area over the gap so the menu doesn't flicker shut. */
+.topbar .tb-dropdown {
+  position: relative;
+  display: inline-flex;
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+.topbar .tb-drop-toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;        /* match the nav links (INFO) exactly, all breakpoints */
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar .tb-drop-toggle::after {
+  content: "▾";
+  font-size: 9px;
+  color: var(--muted);
+}
+.topbar .tb-drop-toggle:hover,
+.topbar .tb-drop-toggle.active { color: var(--muted); }
+
+.topbar .tb-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 148px;
+  display: none;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  z-index: 200;
+}
+.topbar .tb-dropdown:hover .tb-menu,
+.topbar .tb-dropdown:focus-within .tb-menu,
+.topbar .tb-dropdown.open .tb-menu { display: flex; }
+
+.topbar .tb-menu a {
+  padding: 9px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.topbar .tb-menu a + a { border-top: 1px solid var(--hairline); }
+.topbar .tb-menu a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
+.topbar .tb-menu a.active { color: var(--muted); }
+
+/* ---------------- DESCRIPTION BAND (below header) ---------------- */
+.subhead {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0; right: 0;
+  z-index: 99;
+  background: var(--paper);
+  padding: 18px 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+}
+.subhead .subhead-text {
+  font-family: var(--grotesk);
+  font-size: 15px;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+.subhead .subhead-text strong { font-weight: 700; }
+.subhead .subhead-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: right;
+  color: var(--ink);
+}
+
+/* ---------------- LAYOUT ---------------- */
+.layout {
+  position: fixed;
+  top: var(--stack-h, var(--topbar-h));
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+}
+
+/* LEFT — 1/4 width, independently scrollable info / Are.na feed */
+.left {
+  width: var(--left-w);
+  flex: 0 0 auto;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 14px 60px;
+}
+
+/* DRAGGABLE DIVIDER between the two columns */
+.divider {
+  flex: 0 0 var(--divider-w);
+  height: 100%;
+  cursor: col-resize;
+  background: var(--hairline);
+  position: relative;
+  touch-action: none;
+}
+.divider::after {
+  /* subtle grip, centered */
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px; height: 26px;
+  border-left: 1px solid rgba(0,0,0,0.18);
+  border-right: 1px solid rgba(0,0,0,0.18);
+}
+.divider:hover { background: #dcdcdc; }
+.left-heading {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+/* RIGHT — 3/4 width, portfolio grid, scrollable */
+.right {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 14px 80px;
+}
+
+/* ---------------- ARE.NA FEED (left) ---------------- */
+.arena-feed { display: flex; flex-direction: column; gap: 18px; }
+.scrap { display: block; }
+.scrap img,
+.scrap video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--hairline);
+}
+.scrap .scrap-cap {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: 4px;
+  word-break: break-word;
+}
+.scrap .scrap-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  border: 1px solid var(--hairline);
+  padding: 8px;
+}
+.arena-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0 8px;
+}
+.arena-status.arena-end {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  text-transform: uppercase;
+  padding: 22px 0;
+}
+.arena-sentinel { height: 1px; width: 100%; }
+
+/* Full-width Scraps page — grid that flows left-to-right in order.
+   Using a grid (not CSS columns) so appended items keep their place and the
+   existing ones don't reflow. */
+.right.full { width: 100%; }
+.scraps .right.full .arena-feed {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.scraps .right.full .scrap { margin: 0; }
+@media (max-width: 1200px) { .scraps .right.full .arena-feed { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 820px)  { .scraps .right.full .arena-feed { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------------- PORTFOLIO GRID (right) ---------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px 24px;
+}
+.tile { display: block; }
+.tile-metalink:hover { text-decoration: none; }
+
+/* per-tile image carousel */
+.tile-carousel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #f4f4f4;
+  border: 1px solid var(--hairline);
+}
+.tile-track { display: flex; height: 100%; transition: transform 0.35s ease; }
+.tile-slide { flex: 0 0 100%; min-width: 100%; height: 100%; display: block; }
+.tile-slide img,
+.tile-slide video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tcar-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px; height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.tile-carousel:hover .tcar-btn { opacity: 1; }
+.tcar-btn:hover { background: #fff; }
+.tcar-btn.prev { left: 7px; }
+.tcar-btn.next { right: 7px; }
+.tile-dots {
+  position: absolute;
+  bottom: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+.tile-dots .tdot {
+  width: 5px; height: 5px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  padding: 0;
+}
+.tile-dots .tdot.active { background: var(--ink); }
+
+.tile-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.tile-title {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.tile-year {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.tile-tags {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ---------------- PROJECT DETAIL PAGE ---------------- */
+.detail { max-width: 900px; }
+.detail .back {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  display: inline-block;
+  margin-bottom: 24px;
+}
+.detail h1 {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
+}
+.detail .detail-tags {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 24px;
+}
+/* stacked media on project pages */
+.detail .media-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.detail .media {
+  width: 100%; height: auto; display: block;
+  border: 1px solid var(--hairline);
+}
+
+/* section-based project layout */
+/* flat content model: heading + text + image-row blocks */
+.detail .content-heading {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 8px 0 12px;
+}
+.detail .content-text { margin: 0 0 24px; }
+.detail .content-text p {
+  font-family: var(--grotesk);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 62ch;
+  margin: 0 0 14px;
+}
+.detail .content-text p:last-child { margin-bottom: 0; }
+.detail .content-text p a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* embedded outside video (YouTube/Vimeo) — responsive 16:9 */
+.detail .content-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0 0 24px;
+  background: #000;
+  border: 1px solid var(--hairline);
+}
+.detail .content-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* short intro/overview above the hero */
+.detail .proj-intro {
+  font-family: var(--grotesk);
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 62ch;
+  margin: 0 0 24px;
+}
+
+/* inline links inside project copy are underlined so they read as links */
+.detail .proj-intro a,
+.detail .proj-section p a,
+.detail .body p a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.detail .proj-section { margin-bottom: 44px; }
+.detail .proj-section .section-heading {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+.detail .proj-section p {
+  font-family: var(--grotesk);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 62ch;
+  margin: 0 0 14px;
+}
+.detail .proj-section .media-rows { margin-top: 18px; }
+
+/* section image layouts */
+.detail .media-rows.media-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.detail .media-rows.media-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.detail .media-grid-2 .media,
+.detail .media-grid-3 .media {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+/* block with an explicit ratio (e.g. "16/9") — crop images to that box.
+   Works for grids and single full-width images. */
+.detail .media-rows.media-ratio .media {
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--cell-ratio, 16 / 9);
+  object-fit: cover;
+}
+
+/* dark band section (mockups on black, etc.) */
+.detail .proj-section.dark {
+  background: #0d0d0d;
+  color: #fff;
+  padding: 30px;
+  margin: 0 -14px 44px;   /* bleed to the column's 14px padding */
+}
+.detail .proj-section.dark .section-heading,
+.detail .proj-section.dark p { color: #fff; }
+.detail .proj-section.dark .media { border-color: #2a2a2a; }
+
+
+/* project quick-info panel (left column of project page) */
+.proj-info { font-family: var(--grotesk); }
+/* mobile-only back link at top of the sidebar (hidden on desktop) */
+.pi-back {
+  display: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.proj-info .pi-title {
+  font-family: var(--grotesk);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.proj-info .pi-summary { font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+.proj-info .pi-facts { margin: 0 0 16px; font-family: var(--mono); font-size: 11px; }
+.proj-info .pi-facts dt {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 10px;
+}
+.proj-info .pi-facts dd { margin: 2px 0 0; }
+.proj-info .pi-credits {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  border-top: 1px solid var(--hairline);
+  padding-top: 12px;
+}
+.proj-info .role {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.proj-info .pi-credit-line { margin-bottom: 2px; }
+/* extra content inside the credits block */
+.proj-info .pi-image { margin: 12px 0; }
+.proj-info .pi-image img,
+.proj-info .pi-image video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--hairline);
+}
+.proj-info .pi-image figcaption {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: 4px;
+}
+/* embedded video (YouTube/Vimeo) in the sidebar — responsive 16:9 */
+.proj-info .pi-embed { margin: 12px 0; }
+.proj-info .pi-embed-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--hairline);
+}
+.proj-info .pi-embed-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+/* file:// fallback — clickable thumbnail that opens the video in a new tab */
+.proj-info .pi-embed-fallback { display: block; cursor: pointer; }
+.proj-info .pi-embed-fallback img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.proj-info .pi-embed-play {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px; height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 3px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+}
+.proj-info .pi-embed-fallback:hover .pi-embed-play { background: rgba(0, 0, 0, 0.82); }
+.proj-info .pi-embed figcaption {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.proj-info .pi-embed figcaption a { text-decoration: underline; text-underline-offset: 2px; }
+.proj-info .pi-subheading {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+.proj-info .pi-text {
+  font-family: var(--grotesk);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.proj-info .pi-text a,
+.proj-info .pi-image figcaption a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.detail .body p {
+  font-family: var(--grotesk);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 62ch;
+  margin: 0 0 14px;
+}
+.detail .credits {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.detail .credits .role { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ---------------- PRIVATE (LOCKED) PROJECT ---------------- */
+.private-lock {
+  position: relative;
+  width: 100%;
+  min-height: 72vh;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #2b2b2b, #0d0d0d);
+}
+/* optional blurred backdrop from the project cover */
+.private-lock .private-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(26px) brightness(0.45);
+  transform: scale(1.15);
+}
+/* dark gradient over the top of everything */
+.private-lock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.8));
+}
+.private-lock .private-msg {
+  position: relative;
+  z-index: 1;
+  max-width: 32ch;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 0 24px;
+}
+
+/* ---------------- LIGHTBOX ---------------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 64px;
+  /* background color is set inline (per project or the SITE.lightbox default) */
+}
+.lightbox.open { display: flex; }
+.lb-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 92vw;
+  max-height: 90vh;
+}
+.lb-img {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.lb-cap {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: #1a1a1a;
+  max-width: 70ch;
+}
+.lb-close,
+.lb-nav {
+  position: absolute;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.lb-close:hover,
+.lb-nav:hover { background: #fff; }
+.lb-close {
+  top: 18px;
+  right: 20px;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  font-size: 16px;
+}
+.lb-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  font-size: 24px;
+}
+.lb-prev { left: 20px; }
+.lb-next { right: 20px; }
+
+@media (max-width: 640px) {
+  .lightbox { padding: 44px 12px; }
+  .lb-nav { width: 38px; height: 38px; font-size: 20px; }
+  .lb-prev { left: 8px; }
+  .lb-next { right: 8px; }
+}
+
+/* ---------------- INFO PAGE ---------------- */
+.info-wrap { max-width: 620px; font-family: var(--grotesk); }
+.info-wrap p { font-size: 14px; line-height: 1.6; }
+.info-wrap .mono { font-family: var(--mono); font-size: 12px; }
+
+/* Info page — left column (photo + bio + contact) */
+.info-photo {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--hairline);
+  margin-bottom: 16px;
+}
+.info-bio {
+  font-family: var(--grotesk);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.info-bio p { margin: 0 0 14px; }
+.info-links {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.info-links a { color: var(--ink); }
+
+/* Info page — right column: interactive Are.na image board.
+   The right column becomes a fixed, non-scrolling playground; windows are
+   absolutely positioned inside it and clipped to its bounds. */
+body[data-page="about.html"] .right { overflow: hidden; padding: 0; }
+.info-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* helper line (top-left of the board) */
+.info-canvas .ic-hint {
+  position: absolute;
+  top: 12px; left: 14px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+}
+.info-canvas .ic-status:empty { display: none; }
+.info-canvas .ic-hint-keys { color: var(--muted); }
+
+/* a single draggable image window */
+.info-canvas .ic-window {
+  position: absolute;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.14);
+}
+.info-canvas .ic-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.info-canvas .ic-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.info-canvas .ic-rotate,
+.info-canvas .ic-close {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  font-family: var(--mono);
+  color: var(--ink);
+  cursor: pointer;
+}
+.info-canvas .ic-rotate { font-size: 15px; cursor: grab; }
+.info-canvas .ic-rotate:active { cursor: grabbing; }
+.info-canvas .ic-close { font-size: 16px; font-weight: 700; }
+.info-canvas .ic-rotate:hover,
+.info-canvas .ic-close:hover { opacity: 0.55; }
+
+.info-canvas .ic-body {
+  padding: 8px;
+  overflow: hidden;
+}
+.info-canvas .ic-body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.info-canvas .ic-resize {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 18px; height: 18px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--ink) 50%);
+}
+.info-canvas .ic-resize:hover {
+  background: linear-gradient(135deg, transparent 50%, #666 50%);
+}
+
+/* fade + scale in on spawn (both modes) */
+@keyframes icSpawn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.info-canvas .ic-window.ic-spawn { animation: icSpawn 0.32s ease-out; }
+
+/* fade out when an ambient trail image ages out */
+.info-canvas .ic-window.ic-out {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+
+/* mode toggle (top-right of the board) */
+.info-canvas .ic-toggle {
+  position: absolute;
+  top: 12px; right: 14px;
+  z-index: 3;
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.info-canvas .ic-mode {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 10px;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.info-canvas .ic-mode + .ic-mode { border-left: 1px solid var(--hairline); }
+.info-canvas .ic-mode:hover { color: var(--ink); }
+.info-canvas .ic-mode.on { background: var(--ink); color: var(--paper); }
+
+/* respect reduced-motion: skip the spawn animation */
+@media (prefers-reduced-motion: reduce) {
+  .info-canvas .ic-window.ic-spawn { animation: none; }
+  .info-canvas .ic-window.ic-out { transition: none; }
+}
+
+/* On mobile the right column can't be a fixed playground (the layout stacks
+   and scrolls), so give the board an explicit height. */
+@media (max-width: 820px) {
+  body[data-page="about.html"] .right { overflow: hidden; }
+  .info-canvas { height: 78vh; border-top: 1px solid var(--hairline); }
+}
+
+/* ---------------- RESPONSIVE ---------------- */
+@media (max-width: 820px) {
+  .layout { position: static; display: block; }
+  .left, .right {
+    width: 100% !important; min-width: 0; height: auto;
+    overflow: visible;
+  }
+  .left { border-bottom: 1px solid var(--ink); }
+  /* On mobile the home page hides the Scraps feed and shows only Projects */
+  body[data-page="index.html"] .left { display: none; border-bottom: none; }
+  .divider { display: none; }
+  body { padding-top: var(--stack-h, var(--topbar-h)); }
+  .subhead { position: static; flex-direction: column; gap: 12px; padding: 14px; }
+  .subhead .subhead-links { flex-direction: row; gap: 14px; text-align: left; }
+  .grid { grid-template-columns: 1fr; }
+  .topbar { gap: 10px 14px; padding: 10px 14px; flex-wrap: wrap; }
+  .topbar .tb-nav { margin-left: auto; }   /* wordmark left, nav right */
+  .topbar .tb-center { flex-basis: 100%; order: 3; }
+  .topbar .tb-info { font-size: 12px; max-width: none; }
+  .topbar .wordmark { font-size: 17px; }
+  .topbar .tb-nav { font-size: 14px; gap: 14px; justify-content: flex-end; }
+  /* on mobile, sidebar copy matches main-column copy size (14px) */
+  .proj-info .pi-summary,
+  .proj-info .pi-text { font-size: 14px; }
+
+  /* project pages on mobile: all main-column images stack full width
+     (no 2-up/3-up grids) */
+  .detail .media-rows.media-grid-2,
+  .detail .media-rows.media-grid-3 { grid-template-columns: 1fr; }
+
+  /* hide sidebar reference images, and swap the "Info" label for the back
+     link (which is removed from the main column) */
+  .proj-info .pi-image { display: none; }
+  .pi-back { display: block; }
+  .pi-head-label { display: none; }
+  .detail .back { display: none; }
+}

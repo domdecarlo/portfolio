@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DECARLO — Work</title>
+  <meta name="description" content="Portfolio of Dominic DeCarlo — design + prototyping." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="index.html">
+  <header class="topbar"></header>
+
+  <div class="layout">
+    <!-- LEFT: 1/4 width, scrollable Are.na scrap feed -->
+    <aside class="left">
+      <p class="left-heading">Scraps</p>
+      <div id="arena"></div>
+    </aside>
+
+    <!-- Draggable divider — drag to resize, double-click to reset -->
+    <div class="divider" title="Drag to resize · double-click to reset"></div>
+
+    <!-- RIGHT: 3/4 width, portfolio grid -->
+    <main class="right">
+      <p class="left-heading">Projects</p>
+      <div id="grid"></div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
