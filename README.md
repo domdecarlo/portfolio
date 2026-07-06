@@ -1,7 +1,6 @@
 # decarlo.design — portfolio site
 
-A static site: plain HTML, CSS, and vanilla JavaScript. No build step, no
-dependencies, no framework.
+Portfolio site for design work - HTML, CSS, and vanilla JavaScript.
 
 ## Files
 - `index.html`   — home (Scraps feed + Projects grid)
