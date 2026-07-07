@@ -10,7 +10,7 @@
   --muted: #8a8a8a;
   --hairline: #e6e6e6;
   --topbar-h: 64px;
-  --left-w: 25vw;
+  --left-w: 15vw;   /* default sidebar width (drag the divider to resize) */
   --divider-w: 7px;
   --mono: "SFMono-Regular", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --grotesk: "Helvetica Neue", Helvetica, Arial, sans-serif;
