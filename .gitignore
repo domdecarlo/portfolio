@@ -1,0 +1,5 @@
+# Dev/test dependencies — not needed by the static site
+node_modules/
+
+# macOS junk
+.DS_Store
