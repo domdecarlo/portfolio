@@ -58,7 +58,7 @@
 
 
 const SITE = {
-  name: "Dominic DeCarlo",
+  name: "Dominic Decarlo",
   // Drop a logo file in the folder and set logo: "logo.svg", or leave "" for the ◎ placeholder.
   logo: "assets/img/vector/vector-head.svg",
 
@@ -85,7 +85,7 @@ const SITE = {
   // array of { label, href } (external http links open in a new tab).
   nav: [
     //{ label: "Work", href: "index.html" },
-    { label: "INFO", href: "about.html" },
+    { label: "INFO", href: "info.html" },
     {
       label: "MORE",
       children: [
@@ -102,7 +102,7 @@ const SITE = {
   info: {
     photo: "assets/img/info/head-knot.png",
     bio: [
-      "Hi, I'm Dominic De Carlo, a Visual Designer & Illustrator based in San Francisco.",
+      "Hi, I'm Dominic Decarlo, a Visual Designer & Illustrator based in San Francisco.",
       "Focused on creating impressive brand experiences with visual impact.",
     ],
     links: [

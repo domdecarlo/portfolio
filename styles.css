@@ -828,7 +828,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 /* Info page — right column: interactive Are.na image board.
    The right column becomes a fixed, non-scrolling playground; windows are
    absolutely positioned inside it and clipped to its bounds. */
-body[data-page="about.html"] .right { overflow: hidden; padding: 0; }
+body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
 .info-canvas {
   position: relative;
   width: 100%;
@@ -975,7 +975,7 @@ body[data-page="about.html"] .right { overflow: hidden; padding: 0; }
 /* On mobile the right column can't be a fixed playground (the layout stacks
    and scrolls), so give the board an explicit height. */
 @media (max-width: 820px) {
-  body[data-page="about.html"] .right { overflow: hidden; }
+  body[data-page="info.html"] .right { overflow: hidden; }
   .info-canvas { height: 78vh; border-top: 1px solid var(--hairline); }
 }
 

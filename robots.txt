@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://decarlo.design/sitemap.xml
