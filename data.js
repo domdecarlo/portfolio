@@ -103,7 +103,7 @@ const SITE = {
     photo: "assets/img/info/head-knot.png",
     bio: [
       "Hi, I'm Dominic De Carlo, a Visual Designer & Illustrator based in San Francisco.",
-      "Focused on creating cohesive brand experiences and MFA brain design.",
+      "Focused on creating impressive brand experiences with visual impact.",
     ],
     links: [
       { label: "Email", href: "mailto:dddecarlo@gmail.com" },
