@@ -131,9 +131,9 @@ const SITE = {
   infoCanvas: {
     enabled: true,
     channelSlug: "scrap-k6m8xpubrkg", // defaults to arena.channelSlug if omitted
-    mode: "trail",       // starting mode on desktop: "trail" or "board"
+    mode: "board",       // starting mode on desktop: "trail" | "board" | "deck"
     mobileMode: "board", // starting mode on mobile/touch (trail needs a cursor)
-    showToggle: true,    // show the on-canvas Trail/Board switch
+    showToggle: true,    // show the on-canvas Trail/Board/Deck switch
 
     guaranteedNew: 15,   // reveal the newest N scraps first (in shuffled order)
 
@@ -145,6 +145,13 @@ const SITE = {
     initialDelay: 2500,  // ms before the board starts auto-dropping
     autoInterval: 2200,  // ms between auto-dropped images (0 = click/Space only)
     maxAuto: 0,          // stop auto after N images (0 = until the pool runs out)
+
+    // feed mode (a rotating ring of images; hover to zoom, click to enlarge)
+    deckTile: 200,       // px — base tile size (front tiles scale a bit larger)
+    deckCount: 40,       // starting images around the ring (on-screen slider adjusts 8–60)
+    deckSpeed: 0.25,     // rotation speed (radians/second), counter-clockwise
+    deckTilt: -0.6,      // ring tilt in radians (the ellipse angle)
+    deckFlat: 0.34,      // ellipse flatness (minor/major); lower = thinner blade
 
     defaultWidth: 250,   // px — window width for a normal (portrait/square) image
     wideWidth: 420,      // px — window width for a wide image (aspect > 1.3)

@@ -843,6 +843,8 @@ body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
   z-index: 2;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 4px;
   font-family: var(--mono);
   font-size: 10px;
@@ -852,7 +854,12 @@ body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
   pointer-events: none;
 }
 .info-canvas .ic-status:empty { display: none; }
-.info-canvas .ic-hint-keys { color: var(--muted); }
+.info-canvas .ic-hint-keys {
+  color: var(--muted);
+  white-space: pre-line;   /* render each instruction on its own line */
+  line-height: 1.7;
+  text-align: left;
+}
 
 /* a single draggable image window */
 .info-canvas .ic-window {
@@ -966,10 +973,124 @@ body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
 .info-canvas .ic-mode:hover { color: var(--ink); }
 .info-canvas .ic-mode.on { background: var(--ink); color: var(--paper); }
 
-/* respect reduced-motion: skip the spawn animation */
+/* tidy: animate windows into the grid */
+.info-canvas .ic-window.ic-tidying {
+  transition: left 0.45s ease, top 0.45s ease, width 0.45s ease, transform 0.45s ease;
+}
+
+/* ---- FEED MODE: a rotating ring of images on a dark stage; click to enlarge ---- */
+.info-canvas .ic-deck {
+  position: absolute;
+  inset: 0;
+  z-index: 1;                 /* below the hint (2) and toggle (3) */
+  background: #0d0d0d;        /* gallery backdrop */
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.info-canvas .ic-deck.in { opacity: 1; }
+.info-canvas .ic-deck-tile {
+  position: absolute;
+  left: 0; top: 0;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+  will-change: transform, opacity;   /* position + scale animated in JS */
+}
+.info-canvas .ic-deck-tile img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Wheel-mode controls (count + speed) — sit inline in the hint stack */
+.info-canvas .ic-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  pointer-events: auto;   /* re-enable interaction inside the non-interactive hint */
+}
+.info-canvas .ic-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.info-canvas .ic-slider-label { min-width: 68px; }   /* keep both rows aligned */
+.info-canvas .ic-slider-range {
+  width: 120px;
+  accent-color: currentColor;
+  cursor: pointer;
+}
+
+/* deck lightbox (full view) */
+.ic-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 56px;
+  background: rgba(17, 17, 17, 0.92);
+}
+.ic-lightbox.open { display: flex; }
+.ic-lb-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 92vw;
+  max-height: 90vh;
+}
+.ic-lb-img {
+  max-width: 90vw;
+  max-height: 82vh;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.ic-lb-cap {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: #ddd;
+  text-align: center;
+  max-width: 70ch;
+}
+.ic-lb-close,
+.ic-lb-nav {
+  position: absolute;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.ic-lb-close:hover,
+.ic-lb-nav:hover { background: #fff; }
+.ic-lb-close { top: 18px; right: 20px; width: 38px; height: 38px; border-radius: 50%; font-size: 15px; }
+.ic-lb-nav { top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; font-size: 22px; }
+.ic-lb-prev { left: 20px; }
+.ic-lb-next { right: 20px; }
+
+/* respect reduced-motion: skip the spawn/deck animations */
 @media (prefers-reduced-motion: reduce) {
   .info-canvas .ic-window.ic-spawn { animation: none; }
   .info-canvas .ic-window.ic-out { transition: none; }
+  .info-canvas .ic-window.ic-tidying { transition: none; }
+  .info-canvas .ic-deck-tile { animation: none; }
 }
 
 /* On mobile the right column can't be a fixed playground (the layout stacks

@@ -567,6 +567,13 @@ function renderInfoCanvas() {
   const WIDE_W = cfg.wideWidth ?? 420;
   const TRAIL_DISTANCE = cfg.trailDistance ?? 90;
   const TRAIL_MAX = cfg.trailMax ?? 22;
+  const DECK_TILE = cfg.deckTile ?? 200;     // feed: base tile size (px)
+  const DECK_COUNT = cfg.deckCount ?? 40;    // feed: starting images around the ring
+  const DECK_SPEED = cfg.deckSpeed ?? 0.25;  // feed: rotation speed (radians/sec, CCW)
+  const DECK_TILT = cfg.deckTilt ?? -0.6;    // feed: ring tilt (radians)
+  const DECK_FLAT = cfg.deckFlat ?? 0.34;    // feed: ellipse flatness (minor/major)
+  const DECK_SCALE_MIN = 0.5, DECK_SCALE_MAX = 1.15; // back → front size range
+  const MODES = ["trail", "board", "deck"];
   const MODE_KEY = "decarlo:infoMode";
 
   // Mobile / touch defaults to board — the trail needs a hovering cursor.
@@ -577,7 +584,7 @@ function renderInfoCanvas() {
   // device-appropriate default above.
   let MODE = defaultMode;
   try { MODE = localStorage.getItem(MODE_KEY) || defaultMode; } catch (e) {}
-  if (MODE !== "board" && MODE !== "trail") MODE = "trail";
+  if (!MODES.includes(MODE)) MODE = "trail";
 
   // --- state ---
   let pool = [];                // {url, filename} sorted newest→oldest
@@ -589,6 +596,16 @@ function renderInfoCanvas() {
   let baseZ = 10;
   let interacting = false;      // true while dragging/resizing/rotating a window
   const trailQueue = [];        // ambient (untouched) trail windows, oldest first
+  let deck = null;              // deck-mode container
+  let deckTiles = [], deckMeta = null, deckNextImg = 0, deckRAF = 0, deckRot = 0, deckSwapAcc = 0;
+  let deckCount = DECK_COUNT;      // current ring size (adjustable)
+  let deckSpeed = DECK_SPEED;      // current rotation speed (adjustable)
+  let guaranteedNew = GUARANTEED;  // newest-first count (adjustable, all modes)
+  let deckTileSize = DECK_TILE;    // wheel image size (adjustable)
+  let deckTilt = DECK_TILT;        // wheel tilt in radians (adjustable)
+  let deckFlat = DECK_FLAT;        // wheel ellipse flatness b/a (adjustable)
+  let sliderWrap = null;
+  let lb = null, lbIdx = 0;     // deck lightbox overlay + current index
 
   // --- ui: hint + status + mode toggle, layered above the board ---
   const hint = el("div", { class: "ic-hint" });
@@ -599,29 +616,102 @@ function renderInfoCanvas() {
 
   function updateHint() {
     if (cfg.hint) { keysEl.textContent = cfg.hint; return; }
-    keysEl.textContent = MODE === "trail"
-      ? "move to reveal · drag to keep · t to switch · c to clear"
-      : "click / space to add · drag to organize · t to switch · c to clear";
+    const lines = MODE === "trail"
+      ? ["move to reveal", "drag to keep", "t to tidy", "s to switch", "c to clear"]
+      : MODE === "board"
+      ? ["click / space to add", "t to tidy", "s to switch", "c to clear"]
+      : ["a rotating wheel", "hover to zoom", "click to enlarge", "s to switch"];
+    keysEl.textContent = lines.join("\n"); // one instruction per line
   }
 
   // mode toggle (top-right)
   if (cfg.showToggle !== false) {
+    const LABELS = { trail: "trail", board: "board", deck: "wheel" };
     const toggle = el("div", { class: "ic-toggle" });
-    ["trail", "board"].forEach((m) => {
-      const b = el("button", { class: "ic-mode" + (m === MODE ? " on" : ""), "data-mode": m }, m);
+    MODES.forEach((m) => {
+      const b = el("button", { class: "ic-mode" + (m === MODE ? " on" : ""), "data-mode": m }, LABELS[m] || m);
       b.addEventListener("click", (e) => { e.stopPropagation(); if (m !== MODE) setMode(m); });
       toggle.append(b);
     });
     canvas.append(toggle);
   }
 
+  // on-canvas controls, inline in the hint
+  {
+    // helper: a labelled range row
+    const makeRow = (labelText, attrs, onInput) => {
+      const lab = el("span", { class: "ic-slider-label" }, labelText);
+      const range = el("input", Object.assign({ type: "range", class: "ic-slider-range" }, attrs));
+      range.addEventListener("input", (e) => { e.stopPropagation(); onInput(range, lab); });
+      range.addEventListener("click", (e) => e.stopPropagation());
+      return el("div", { class: "ic-slider" }, lab, range);
+    };
+    const relayoutDeck = () => { if (deckMeta) deckTiles.forEach(layoutTile); };
+
+    // WHEEL only: count, speed, tilt, shape, size
+    sliderWrap = el("div", { class: "ic-controls" });
+    let countTO = null;
+    sliderWrap.append(makeRow(
+      deckCount + " images",
+      { min: "20", max: "60", value: String(deckCount), "aria-label": "Number of images" },
+      (range, lab) => {
+        deckCount = parseInt(range.value) || deckCount;
+        lab.textContent = deckCount + " images";
+        clearTimeout(countTO);
+        countTO = setTimeout(() => { if (MODE === "deck") { const r = deckRot; buildDeck(); deckRot = r; } }, 40);
+      }
+    ));
+    sliderWrap.append(makeRow(
+      "speed",
+      { min: "0", max: "1.2", step: "0.05", value: String(deckSpeed), "aria-label": "Rotation speed" },
+      (range) => { deckSpeed = parseFloat(range.value); }
+    ));
+    sliderWrap.append(makeRow(
+      "tilt",
+      { min: "-90", max: "90", step: "1", value: String(Math.round(deckTilt * 180 / Math.PI)), "aria-label": "Ring tilt" },
+      (range) => {
+        deckTilt = parseFloat(range.value) * Math.PI / 180;
+        if (deckMeta) { deckMeta.cosT = Math.cos(deckTilt); deckMeta.sinT = Math.sin(deckTilt); }
+        relayoutDeck();
+      }
+    ));
+    sliderWrap.append(makeRow(
+      "shape",
+      { min: "0.12", max: "0.7", step: "0.02", value: String(deckFlat), "aria-label": "Ellipse shape" },
+      (range) => {
+        deckFlat = parseFloat(range.value);
+        if (deckMeta) deckMeta.b = deckMeta.a * deckFlat;
+        relayoutDeck();
+      }
+    ));
+    sliderWrap.append(makeRow(
+      "size",
+      { min: "100", max: "320", step: "10", value: String(deckTileSize), "aria-label": "Image size" },
+      (range) => {
+        deckTileSize = parseInt(range.value) || deckTileSize;
+        deckTiles.forEach((t) => { t.el.style.width = deckTileSize + "px"; });
+      }
+    ));
+    sliderWrap.style.display = (MODE === "deck") ? "flex" : "none";
+    hint.append(sliderWrap);
+  }
+
   function setMode(m) {
+    const prev = MODE;
     MODE = m;
     try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
     canvas.querySelectorAll(".ic-mode").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
     updateHint();
-    if (m === "board") startBoard(300);
-    else stopAuto();
+    if (sliderWrap) sliderWrap.style.display = (m === "deck") ? "flex" : "none";
+    if (prev === "deck" && m !== "deck") destroyDeck();
+    if (m === "deck") {
+      stopAuto();
+      if (prev !== "deck") { clearAll(); buildDeck(); }
+    } else if (m === "board") {
+      startBoard(300);
+    } else {
+      stopAuto();
+    }
   }
 
   const shuffle = (arr) => {
@@ -633,18 +723,23 @@ function renderInfoCanvas() {
     return a;
   };
   const initGuaranteed = () => {
-    guaranteedOrder = shuffle(Array.from({ length: Math.min(GUARANTEED, pool.length) }, (_, i) => i));
+    guaranteedOrder = shuffle(Array.from({ length: Math.min(guaranteedNew, pool.length) }, (_, i) => i));
   };
 
-  // Weighted pick favoring newer images; first GUARANTEED come out newest-first
-  // (shuffled). Never repeats an image until the pool is exhausted.
+  // Choose which scrap to show next (used by trail + board). `pool` is sorted
+  // newest-first, so a low index = a newer image.
   const pickIndex = () => {
+    // only consider images not already on screen
     const avail = pool.map((_, i) => i).filter((i) => !used.has(i));
-    if (!avail.length) return -1;
+    if (!avail.length) return -1;                 // everything is already shown
+    // For the first `guaranteedNew` drops, hand back the newest ones in a
+    // pre-shuffled order so the freshest scraps always lead.
     if (displayed < guaranteedOrder.length) {
       const idx = guaranteedOrder[displayed];
       if (idx != null && !used.has(idx)) return idx;
     }
+    // After that, pick at random but stack the deck toward newer images by
+    // adding them to the pool multiple times (5x for the newest 10, 3x, 2x…).
     const weighted = [];
     avail.forEach((i) => {
       let w = 1;
@@ -660,7 +755,8 @@ function renderInfoCanvas() {
   };
   const bringFront = (win) => { win.style.zIndex = topZ() + 1; };
 
-  // --- build one window around an image ---
+  // Build one draggable "window" around an image: a header (filename, rotate ⟲,
+  // close ×), the image, and a resize grip. Used by trail + board modes.
   function makeWindow(item) {
     const win = el("div", { class: "ic-window" });
     win.dataset.rotation = "0";
@@ -785,17 +881,195 @@ function renderInfoCanvas() {
     initGuaranteed();
   }
 
+  // ---------- TIDY (T): arrange the current board into a neat masonry grid ----------
+  function tidy() {
+    if (MODE === "deck") { buildDeck(); return; } // deck: re-lay the cascade
+    const wins = [...canvas.querySelectorAll(".ic-window")];
+    if (!wins.length) return;
+    const pad = 14;
+    const colW = DEF_W;
+    const cols = Math.max(1, Math.floor((canvas.clientWidth - pad) / (colW + pad)));
+    const colY = new Array(cols).fill(pad);
+    wins.forEach((w) => {
+      markTouched(w);                       // tidied images become permanent keepers
+      w.classList.add("ic-tidying");
+      w.style.width = colW + "px";
+      w.style.transform = "rotate(0deg)";
+      w.dataset.rotation = "0";
+      let c = 0;
+      for (let i = 1; i < cols; i++) if (colY[i] < colY[c]) c = i;
+      w.style.left = (pad + c * (colW + pad)) + "px";
+      w.style.top = colY[c] + "px";
+      colY[c] += (w.offsetHeight || colW * 0.9 + 40) + pad;
+    });
+    setTimeout(() => wins.forEach((w) => w.classList.remove("ic-tidying")), 480);
+  }
+
+  // ---------- DECK (spread): diagonal cascade you zoom (wheel) + click to enlarge ----------
+  const prefersReducedMotion = () =>
+    !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // Place ONE tile on the tilted ring for the wheel's current rotation.
+  // Called for every tile on every animation frame — this is what makes it spin.
+  function layoutTile(t) {
+    const m = deckMeta;
+    // Each tile owns a fixed angle (t.phi). Adding the shared rotation (deckRot)
+    // is what moves it around the ring — every tile shares the same deckRot, so
+    // they all travel together.
+    const phi = t.phi + deckRot;
+    // cos/sin of that angle trace a circle; multiplying by a (wide) and b (short)
+    // squashes the circle into a flat ellipse.
+    const lx = m.a * Math.cos(phi), ly = m.b * Math.sin(phi);
+    // Rotate that ellipse point by the tilt angle (standard 2D rotation) and
+    // offset from the centre of the canvas → final screen x / y.
+    const x = m.cx + lx * m.cosT - ly * m.sinT;
+    const y = m.cy + lx * m.sinT + ly * m.cosT;
+    // "depth" (0 = far/back, 1 = near/front) comes from sin(phi): the bottom of
+    // the ring reads as nearest. We use it to fake perspective.
+    const depth = (Math.sin(phi) + 1) / 2;
+    // Smoothly ease the hover "pop" from 0→1 (or back) a little each frame.
+    t.boost += ((t.hot ? 1 : 0) - t.boost) * 0.2;
+    // Nearer tiles are bigger; hovered tiles get an extra 18% bump.
+    const s = (DECK_SCALE_MIN + (DECK_SCALE_MAX - DECK_SCALE_MIN) * depth) * (1 + 0.18 * t.boost);
+    // Apply position + centre-align + scale in one transform (cheap for the GPU).
+    t.el.style.transform = "translate(" + x + "px," + y + "px) translate(-50%,-50%) scale(" + s + ")";
+    // Nearer tiles stack on top; a hovered tile jumps above everything.
+    t.el.style.zIndex = t.hot ? 100000 : Math.round(depth * 1000);
+    // Fade the far tiles slightly for extra depth.
+    t.el.style.opacity = (0.72 + 0.28 * depth).toFixed(3);
+  }
+
+  // Build the ring: create the tiles, space them evenly, then start the spin.
+  function buildDeck() {
+    destroyDeck();                       // clear any previous ring first
+    if (!pool.length) return;
+    deck = el("div", { class: "ic-deck" });
+    canvas.append(deck);
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    const N = Math.min(deckCount, Math.max(6, pool.length));   // how many tiles
+    // a = half-width of the ellipse, b = half-height (deckFlat makes it a blade).
+    const a = Math.min(cw, ch) * 0.46, b = a * deckFlat;
+    // deckMeta caches the ellipse geometry + pre-computed cos/sin of the tilt so
+    // layoutTile doesn't recompute them 60x/second.
+    deckMeta = { cx: cw / 2, cy: ch / 2, a, b, N, cosT: Math.cos(deckTilt), sinT: Math.sin(deckTilt) };
+    deckTiles = []; deckRot = 0; deckNextImg = 0; deckSwapAcc = 0;
+    for (let i = 0; i < N; i++) {
+      const tile = el("div", { class: "ic-deck-tile" });
+      tile.style.width = deckTileSize + "px";
+      const img = el("img", { alt: "", loading: "lazy", draggable: "false" });
+      const idx = deckNextImg % pool.length;   // pool is sorted newest-first
+      img.src = pool[idx].url;
+      tile.dataset.poolIndex = idx;            // remember which scrap this shows (for the lightbox)
+      deckNextImg++;
+      tile.append(img);
+      // Spread the tiles evenly around the full circle: tile i sits at i/N of 360°.
+      const t = { el: tile, img, phi: (i / N) * Math.PI * 2, hot: false, boost: 0 };
+      tile.addEventListener("click", () => openLightbox(parseInt(tile.dataset.poolIndex)));
+      tile.addEventListener("mouseenter", () => { t.hot = true; }); // pops via layoutTile; ring keeps turning
+      tile.addEventListener("mouseleave", () => { t.hot = false; });
+      layoutTile(t);                           // set its starting position
+      deck.append(tile);
+      deckTiles.push(t);
+    }
+    requestAnimationFrame(() => deck && deck.classList.add("in")); // fade the whole ring in
+    if (!prefersReducedMotion()) startDeckLoop();                  // otherwise leave it static
+  }
+  // The animation loop. Runs ~60x/second and does two things: advance the shared
+  // rotation, then re-draw every tile. That constant re-drawing IS the spin.
+  function startDeckLoop() {
+    cancelAnimationFrame(deckRAF);        // never run two loops at once
+    let last = performance.now();
+    const tick = (now) => {
+      // dt = milliseconds since the last frame (capped so a background tab that
+      // "pauses" doesn't cause one huge jump). Using dt keeps the speed the same
+      // regardless of the device's frame rate.
+      const dt = Math.min(64, now - last); last = now;
+      if (deckMeta) {
+        // The whole rotation: nudge one shared angle a little. Subtracting turns
+        // it counter-clockwise; deckSpeed is radians per second.
+        deckRot -= (deckSpeed * dt) / 1000;
+        if (deckSpeed > 0) {
+          // Every time the ring turns by one tile's worth of angle, swap the
+          // rear tile for a fresh scrap — so it streams new images as it spins.
+          const slot = ((2 * Math.PI) / deckMeta.N) / deckSpeed * 1000; // ms per image
+          deckSwapAcc += dt;
+          if (deckSwapAcc >= slot) { deckSwapAcc -= slot; swapBackTile(); }
+        }
+        deckTiles.forEach(layoutTile);    // re-place every tile at its new angle
+      }
+      deckRAF = requestAnimationFrame(tick); // ask the browser to call us again next frame
+    };
+    deckRAF = requestAnimationFrame(tick);
+  }
+
+  // Find whichever tile is currently furthest back and give it the next image
+  // in the channel (keeps the loop from looking like a fixed set repeating).
+  function swapBackTile() {
+    let back = null, min = 2;             // sin() is at most 1, so 2 is a safe start
+    deckTiles.forEach((t) => { const d = Math.sin(t.phi + deckRot); if (d < min) { min = d; back = t; } });
+    if (back) {
+      const idx = deckNextImg % pool.length;
+      back.img.src = pool[idx].url;
+      back.el.dataset.poolIndex = idx;
+      deckNextImg++;
+    }
+  }
+
+  // Tear the ring down: stop the loop and remove the elements (used when leaving
+  // Wheel mode or rebuilding after the image-count slider changes).
+  function destroyDeck() {
+    cancelAnimationFrame(deckRAF); deckRAF = 0;
+    if (deck) { deck.remove(); deck = null; }
+    deckTiles = []; deckMeta = null;
+  }
+
+  // ---------- deck lightbox (full view) ----------
+  function buildLightbox() {
+    lb = el("div", { class: "ic-lightbox", "aria-hidden": "true" });
+    const img = el("img", { class: "ic-lb-img", alt: "" });
+    const cap = el("figcaption", { class: "ic-lb-cap" });
+    const fig = el("figure", { class: "ic-lb-figure" }, img, cap);
+    const close = el("button", { class: "ic-lb-close", "aria-label": "Close" }, "✕");
+    const prev = el("button", { class: "ic-lb-nav ic-lb-prev", "aria-label": "Previous" }, "‹");
+    const next = el("button", { class: "ic-lb-nav ic-lb-next", "aria-label": "Next" }, "›");
+    lb.append(close, prev, next, fig);
+    document.body.append(lb);
+    close.addEventListener("click", (e) => { e.stopPropagation(); closeLightbox(); });
+    prev.addEventListener("click", (e) => { e.stopPropagation(); lbShow(lbIdx - 1); });
+    next.addEventListener("click", (e) => { e.stopPropagation(); lbShow(lbIdx + 1); });
+    lb.addEventListener("click", (e) => { if (e.target === lb || e.target.classList.contains("ic-lb-figure")) closeLightbox(); });
+  }
+  function lbShow(i) {
+    lbIdx = (i + pool.length) % pool.length;
+    lb.querySelector(".ic-lb-img").src = pool[lbIdx].url;
+    lb.querySelector(".ic-lb-cap").textContent = pool[lbIdx].filename || "";
+  }
+  function openLightbox(i) {
+    if (!lb) buildLightbox();
+    lbShow(i);
+    lb.classList.add("open");
+    lb.setAttribute("aria-hidden", "false");
+  }
+  function closeLightbox() {
+    if (lb) { lb.classList.remove("open"); lb.setAttribute("aria-hidden", "true"); }
+  }
+  const lbOpen = () => !!(lb && lb.classList.contains("open"));
+
+  function cycleMode() { setMode(MODES[(MODES.indexOf(MODE) + 1) % MODES.length]); }
+
   // --- drag (grab anywhere except the control handles) ---
+  // Drag a window by grabbing anywhere on it (mouse or touch).
   function makeDraggable(win) {
     let dragging = false, lastX = 0, lastY = 0;
     const onDown = (e) => {
       const t = e.target;
+      // ignore grabs that land on the resize/rotate/close controls
       if (t.closest(".ic-resize") || t.closest(".ic-rotate") || t.closest(".ic-close")) return;
       e.preventDefault();
       dragging = true;
-      interacting = true;
-      markTouched(win);
-      bringFront(win);
+      interacting = true;   // pauses the cursor-trail so we don't spawn while dragging
+      markTouched(win);     // grabbing a trail image makes it a permanent keeper
+      bringFront(win);      // raise it above the others
       const p = e.touches ? e.touches[0] : e;
       lastX = p.clientX; lastY = p.clientY;
     };
@@ -803,6 +1077,7 @@ function renderInfoCanvas() {
       if (!dragging) return;
       e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
+      // move the window by however far the pointer moved since the last event
       win.style.left = (parseInt(win.style.left) || 0) + (p.clientX - lastX) + "px";
       win.style.top = (parseInt(win.style.top) || 0) + (p.clientY - lastY) + "px";
       lastX = p.clientX; lastY = p.clientY;
@@ -847,7 +1122,8 @@ function renderInfoCanvas() {
     document.addEventListener("touchend", onUp);
   }
 
-  // --- rotate by dragging the ⟲ handle around the window center ---
+  // Rotate a window by dragging the ⟲ handle: compare the pointer's angle
+  // around the window's center now vs. when the drag started.
   function makeRotatable(win, handle) {
     let rotating = false, startAngle = 0, startRot = 0;
     const centre = () => {
@@ -884,9 +1160,10 @@ function renderInfoCanvas() {
     document.addEventListener("touchend", onUp);
   }
 
-  // --- board mode: auto-drop loop ---
+  // Board mode: drop a new image every AUTO_INTERVAL ms on a timer. Stops itself
+  // if we leave board mode, hit the max, or run out of images.
   function startAuto() {
-    if (!AUTO_INTERVAL || autoTimer) return;
+    if (!AUTO_INTERVAL || autoTimer) return;   // 0 = disabled, or already running
     autoTimer = setInterval(() => {
       if (MODE !== "board") { stopAuto(); return; }
       if (MAX_AUTO && autoCount >= MAX_AUTO) { stopAuto(); return; }
@@ -896,11 +1173,11 @@ function renderInfoCanvas() {
   }
   function stopAuto() { clearInterval(autoTimer); autoTimer = null; }
 
-  // board mode kick-off: drop one, then let the auto loop run
+  // Board kick-off: after a short delay drop the first image, then let the timer run.
   function startBoard(delay) {
     if (!pool.length) return;
     setTimeout(() => {
-      if (MODE !== "board") return;
+      if (MODE !== "board") return;   // visitor may have switched away during the delay
       dropImage(); autoCount++;
       startAuto();
     }, delay ?? INITIAL_DELAY);
@@ -939,21 +1216,27 @@ function renderInfoCanvas() {
       status.textContent = "";
       updateHint();
 
-      // Board mode auto-runs; trail mode waits for the cursor.
+      // Board auto-runs; deck lays out the cascade; trail waits for the cursor.
       if (MODE === "board") startBoard();
+      else if (MODE === "deck") buildDeck();
     } catch (err) {
       status.textContent = "Couldn't load Are.na channel “" + slug + ".”";
     }
   }
 
-  // --- cursor trail: reveal images along the pointer's path ---
-  let lastTX = null, lastTY = null;
+  // Trail mode: drop an image wherever the cursor goes, but only after it has
+  // travelled a minimum distance since the last drop — so you get a spaced-out
+  // trail instead of hundreds of images piling up on the tiniest movement.
+  let lastTX = null, lastTY = null;   // last cursor position we dropped from
   function trailMove(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
-    const x = clientX - r.left, y = clientY - r.top;
+    const x = clientX - r.left, y = clientY - r.top;   // cursor relative to the canvas
+    // do nothing unless we're in trail mode, have images, and aren't mid-drag
     if (MODE !== "trail" || !pool.length || interacting) { lastTX = x; lastTY = y; return; }
-    if (x < 0 || y < 0 || x > r.width || y > r.height) return;
-    if (lastTX == null) { lastTX = x; lastTY = y; return; }
+    if (x < 0 || y < 0 || x > r.width || y > r.height) return;   // outside the canvas
+    if (lastTX == null) { lastTX = x; lastTY = y; return; }       // first move: just record it
+    // hypot = straight-line distance from the last drop; once it passes the
+    // threshold, drop a new (fading) trail image here and reset the anchor.
     if (Math.hypot(x - lastTX, y - lastTY) >= TRAIL_DISTANCE) {
       dropImage({ x, y, trail: true });
       lastTX = x; lastTY = y;
@@ -965,8 +1248,9 @@ function renderInfoCanvas() {
     if (t) trailMove(t.clientX, t.clientY);
   }, { passive: true });
 
-  // --- triggers: click to add an image, Space to add, C to clear ---
+  // --- triggers: click to add an image (trail/board only), Space to add, C to clear ---
   canvas.addEventListener("click", (e) => {
+    if (MODE === "deck") return; // deck handles its own tile clicks (lightbox)
     if (e.target.closest(".ic-window") || e.target.closest(".ic-toggle")) return;
     if (!pool.length) return;
     if (MODE === "trail") {
@@ -980,11 +1264,19 @@ function renderInfoCanvas() {
   });
   document.addEventListener("keydown", (e) => {
     if (!document.getElementById("info-canvas")) return;
+    // when the deck lightbox is open, arrows navigate and Esc closes
+    if (lbOpen()) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") lbShow(lbIdx - 1);
+      else if (e.key === "ArrowRight") lbShow(lbIdx + 1);
+      return;
+    }
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
-    if (e.code === "Space" || e.key === " ") { e.preventDefault(); dropImage(); }
-    else if (e.key === "c" || e.key === "C") { clearAll(); }
-    else if (e.key === "t" || e.key === "T") { setMode(MODE === "trail" ? "board" : "trail"); }
+    if (e.code === "Space" || e.key === " ") { if (MODE !== "deck") { e.preventDefault(); dropImage(); } }
+    else if (e.key === "c" || e.key === "C") { if (MODE !== "deck") clearAll(); }
+    else if (e.key === "s" || e.key === "S") { cycleMode(); }       // switch mode
+    else if (e.key === "t" || e.key === "T") { tidy(); }            // tidy / reshuffle
   });
 
   load();
