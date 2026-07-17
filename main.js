@@ -573,7 +573,11 @@ function renderInfoCanvas() {
   const DECK_TILT = cfg.deckTilt ?? -0.6;    // feed: ring tilt (radians)
   const DECK_FLAT = cfg.deckFlat ?? 0.34;    // feed: ellipse flatness (minor/major)
   const DECK_SCALE_MIN = 0.5, DECK_SCALE_MAX = 1.15; // back → front size range
-  const MODES = ["trail", "board", "deck"];
+  const FALLS_TILE = cfg.fallsTile ?? 160;      // waterfall: base image size (px)
+  const FALLS_SPEED = cfg.fallsSpeed ?? 55;     // waterfall: fall speed (px/sec)
+  const FALLS_RIPPLE = cfg.fallsRipple ?? 220;  // waterfall: ripple/bulge radius (px)
+  const FALLS_COUNT = cfg.fallsCount ?? 28;     // waterfall: images in the stream
+  const MODES = ["trail", "board", "deck", "waterfall"];
   const MODE_KEY = "decarlo:infoMode";
 
   // Mobile / touch defaults to board — the trail needs a hovering cursor.
@@ -604,8 +608,12 @@ function renderInfoCanvas() {
   let deckTileSize = DECK_TILE;    // wheel image size (adjustable)
   let deckTilt = DECK_TILT;        // wheel tilt in radians (adjustable)
   let deckFlat = DECK_FLAT;        // wheel ellipse flatness b/a (adjustable)
-  let sliderWrap = null;
+  let sliderWrap = null, fallsControls = null;
   let lb = null, lbIdx = 0;     // deck lightbox overlay + current index
+  // waterfall state
+  let falls = null, fallsTiles = [], fallsMeta = null, fallsRAF = 0, fallsScroll = 0, fallsNextImg = 0;
+  let fallsSpeed = FALLS_SPEED, fallsTileSize = FALLS_TILE, fallsRipple = FALLS_RIPPLE, fallsCount = FALLS_COUNT;
+  const fallsCursor = { x: -99999, y: -99999 };  // cursor pos; far away = no ripple
 
   // --- ui: hint + status + mode toggle, layered above the board ---
   const hint = el("div", { class: "ic-hint" });
@@ -620,13 +628,15 @@ function renderInfoCanvas() {
       ? ["move to reveal", "drag to keep", "t to tidy", "s to switch", "c to clear"]
       : MODE === "board"
       ? ["click / space to add", "t to tidy", "s to switch", "c to clear"]
+      : MODE === "waterfall"
+      ? ["a falling stream", "hover to ripple", "click to enlarge", "s to switch"]
       : ["a rotating wheel", "hover to zoom", "click to enlarge", "s to switch"];
     keysEl.textContent = lines.join("\n"); // one instruction per line
   }
 
   // mode toggle (top-right)
   if (cfg.showToggle !== false) {
-    const LABELS = { trail: "trail", board: "board", deck: "wheel" };
+    const LABELS = { trail: "trail", board: "board", deck: "wheel", waterfall: "waterfall" };
     const toggle = el("div", { class: "ic-toggle" });
     MODES.forEach((m) => {
       const b = el("button", { class: "ic-mode" + (m === MODE ? " on" : ""), "data-mode": m }, LABELS[m] || m);
@@ -694,6 +704,40 @@ function renderInfoCanvas() {
     ));
     sliderWrap.style.display = (MODE === "deck") ? "flex" : "none";
     hint.append(sliderWrap);
+
+    // WATERFALL only: images, speed, size, ripple
+    fallsControls = el("div", { class: "ic-controls" });
+    let fCountTO = null;
+    fallsControls.append(makeRow(
+      fallsCount + " images",
+      { min: "10", max: "60", value: String(fallsCount), "aria-label": "Number of images" },
+      (range, lab) => {
+        fallsCount = parseInt(range.value) || fallsCount;
+        lab.textContent = fallsCount + " images";
+        clearTimeout(fCountTO);
+        fCountTO = setTimeout(() => { if (MODE === "waterfall") { const s = fallsScroll; buildFalls(); fallsScroll = s; } }, 40);
+      }
+    ));
+    fallsControls.append(makeRow(
+      "speed",
+      { min: "10", max: "200", step: "5", value: String(fallsSpeed), "aria-label": "Fall speed" },
+      (range) => { fallsSpeed = parseFloat(range.value); }
+    ));
+    fallsControls.append(makeRow(
+      "size",
+      { min: "90", max: "300", step: "10", value: String(fallsTileSize), "aria-label": "Image size" },
+      (range) => {
+        fallsTileSize = parseInt(range.value) || fallsTileSize;
+        fallsTiles.forEach((t) => { t.el.style.width = fallsTileSize + "px"; });
+      }
+    ));
+    fallsControls.append(makeRow(
+      "ripple",
+      { min: "80", max: "480", step: "10", value: String(fallsRipple), "aria-label": "Ripple radius" },
+      (range) => { fallsRipple = parseInt(range.value) || fallsRipple; }
+    ));
+    fallsControls.style.display = (MODE === "waterfall") ? "flex" : "none";
+    hint.append(fallsControls);
   }
 
   function setMode(m) {
@@ -703,10 +747,15 @@ function renderInfoCanvas() {
     canvas.querySelectorAll(".ic-mode").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
     updateHint();
     if (sliderWrap) sliderWrap.style.display = (m === "deck") ? "flex" : "none";
+    if (fallsControls) fallsControls.style.display = (m === "waterfall") ? "flex" : "none";
     if (prev === "deck" && m !== "deck") destroyDeck();
+    if (prev === "waterfall" && m !== "waterfall") destroyFalls();
     if (m === "deck") {
       stopAuto();
       if (prev !== "deck") { clearAll(); buildDeck(); }
+    } else if (m === "waterfall") {
+      stopAuto();
+      if (prev !== "waterfall") { clearAll(); buildFalls(); }
     } else if (m === "board") {
       startBoard(300);
     } else {
@@ -883,7 +932,8 @@ function renderInfoCanvas() {
 
   // ---------- TIDY (T): arrange the current board into a neat masonry grid ----------
   function tidy() {
-    if (MODE === "deck") { buildDeck(); return; } // deck: re-lay the cascade
+    if (MODE === "deck") { buildDeck(); return; }       // deck: re-lay the ring
+    if (MODE === "waterfall") { buildFalls(); return; } // waterfall: re-seed the stream
     const wins = [...canvas.querySelectorAll(".ic-window")];
     if (!wins.length) return;
     const pad = 14;
@@ -1021,6 +1071,82 @@ function renderInfoCanvas() {
     cancelAnimationFrame(deckRAF); deckRAF = 0;
     if (deck) { deck.remove(); deck = null; }
     deckTiles = []; deckMeta = null;
+  }
+
+  // ---------- WATERFALL: a vertical stream that falls, with a cursor ripple ----------
+  // Place one tile in the falling column and size it by how close it is to the
+  // cursor (a gaussian "bulge" — that's the ripple). Returns its y for wrap detection.
+  function layoutFall(t) {
+    const m = fallsMeta;
+    let y = (t.slot * m.spacing + fallsScroll) % m.colH;
+    if (y < 0) y += m.colH;
+    y -= m.tw;                           // buffer so tiles enter/leave off-screen
+    const x = m.cx + t.jx;               // centered column with a little jitter
+    const dx = x - fallsCursor.x, dy = y - fallsCursor.y;
+    const g = Math.exp(-(dx * dx + dy * dy) / (2 * fallsRipple * fallsRipple)); // 0..1 bulge
+    const scale = 0.45 + 2.2 * g;        // far ≈ 0.45×, right under the cursor ≈ 2.65×
+    // shove neighbours away from the cursor so the bulge parts the stream (ripple)
+    const push = (dy >= 0 ? 1 : -1) * m.tw * 0.55 * g;
+    t.el.style.transform = "translate(" + x + "px," + (y + push) + "px) translate(-50%,-50%) scale(" + scale + ")";
+    t.el.style.zIndex = Math.round(g * 1000);   // bulged tiles sit on top
+    return y;                            // base y (pre-push) for wrap detection
+  }
+  function buildFalls() {
+    destroyFalls();
+    if (!pool.length) return;
+    falls = el("div", { class: "ic-falls" });
+    canvas.append(falls);
+    const cw = canvas.clientWidth, ch = canvas.clientHeight, tw = fallsTileSize;
+    const N = Math.max(4, fallsCount);         // how many images in the stream
+    const colH = ch + tw * 2;                  // column height (a bit taller than the view)
+    const spacing = colH / N;                  // spread the N tiles evenly down the column
+    fallsMeta = { cw, ch, tw, spacing, N, colH, cx: cw / 2 };
+    fallsTiles = []; fallsScroll = 0; fallsNextImg = 0;
+    for (let i = 0; i < N; i++) {
+      const tile = el("div", { class: "ic-falls-tile" });
+      tile.style.width = tw + "px";
+      const img = el("img", { alt: "", loading: "lazy", draggable: "false" });
+      const idx = fallsNextImg % pool.length;
+      img.src = pool[idx].url;
+      tile.dataset.poolIndex = idx;
+      fallsNextImg++;
+      tile.append(img);
+      tile.addEventListener("click", () => openLightbox(parseInt(tile.dataset.poolIndex)));
+      const t = { el: tile, img, slot: i, jx: (Math.random() - 0.5) * tw * 0.5, prevY: null };
+      layoutFall(t);
+      falls.append(tile);
+      fallsTiles.push(t);
+    }
+    requestAnimationFrame(() => falls && falls.classList.add("in"));
+    if (!prefersReducedMotion()) startFallsLoop();
+  }
+  function startFallsLoop() {
+    cancelAnimationFrame(fallsRAF);
+    let last = performance.now();
+    const tick = (now) => {
+      const dt = Math.min(64, now - last); last = now;
+      if (fallsMeta) {
+        fallsScroll += (fallsSpeed * dt) / 1000;    // the whole column falls
+        fallsTiles.forEach((t) => {
+          const y = layoutFall(t);
+          // when a tile loops from the bottom back to the top, stream a fresh scrap
+          if (t.prevY != null && y < t.prevY - fallsMeta.colH / 2) {
+            const idx = fallsNextImg % pool.length;
+            t.img.src = pool[idx].url;
+            t.el.dataset.poolIndex = idx;
+            fallsNextImg++;
+          }
+          t.prevY = y;
+        });
+      }
+      fallsRAF = requestAnimationFrame(tick);
+    };
+    fallsRAF = requestAnimationFrame(tick);
+  }
+  function destroyFalls() {
+    cancelAnimationFrame(fallsRAF); fallsRAF = 0;
+    if (falls) { falls.remove(); falls = null; }
+    fallsTiles = []; fallsMeta = null;
   }
 
   // ---------- deck lightbox (full view) ----------
@@ -1219,6 +1345,7 @@ function renderInfoCanvas() {
       // Board auto-runs; deck lays out the cascade; trail waits for the cursor.
       if (MODE === "board") startBoard();
       else if (MODE === "deck") buildDeck();
+      else if (MODE === "waterfall") buildFalls();
     } catch (err) {
       status.textContent = "Couldn't load Are.na channel “" + slug + ".”";
     }
@@ -1243,6 +1370,14 @@ function renderInfoCanvas() {
     }
   }
   canvas.addEventListener("mousemove", (e) => trailMove(e.clientX, e.clientY));
+  // waterfall: track the cursor so the ripple/bulge follows it
+  canvas.addEventListener("mousemove", (e) => {
+    if (MODE !== "waterfall") return;
+    const r = canvas.getBoundingClientRect();
+    fallsCursor.x = e.clientX - r.left;
+    fallsCursor.y = e.clientY - r.top;
+  });
+  canvas.addEventListener("mouseleave", () => { fallsCursor.x = -99999; fallsCursor.y = -99999; });
   canvas.addEventListener("touchmove", (e) => {
     const t = e.touches[0];
     if (t) trailMove(t.clientX, t.clientY);
@@ -1250,7 +1385,7 @@ function renderInfoCanvas() {
 
   // --- triggers: click to add an image (trail/board only), Space to add, C to clear ---
   canvas.addEventListener("click", (e) => {
-    if (MODE === "deck") return; // deck handles its own tile clicks (lightbox)
+    if (MODE === "deck" || MODE === "waterfall") return; // these handle their own tile clicks
     if (e.target.closest(".ic-window") || e.target.closest(".ic-toggle")) return;
     if (!pool.length) return;
     if (MODE === "trail") {
@@ -1273,8 +1408,9 @@ function renderInfoCanvas() {
     }
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
-    if (e.code === "Space" || e.key === " ") { if (MODE !== "deck") { e.preventDefault(); dropImage(); } }
-    else if (e.key === "c" || e.key === "C") { if (MODE !== "deck") clearAll(); }
+    const isStream = MODE === "deck" || MODE === "waterfall";
+    if (e.code === "Space" || e.key === " ") { if (!isStream) { e.preventDefault(); dropImage(); } }
+    else if (e.key === "c" || e.key === "C") { if (!isStream) clearAll(); }
     else if (e.key === "s" || e.key === "S") { cycleMode(); }       // switch mode
     else if (e.key === "t" || e.key === "T") { tidy(); }            // tidy / reshuffle
   });

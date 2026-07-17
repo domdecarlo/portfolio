@@ -1005,6 +1005,36 @@ body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* ---- WATERFALL MODE: a falling stream on a dark stage; hover ripples it ---- */
+.info-canvas .ic-falls {
+  position: absolute;
+  inset: 0;
+  z-index: 1;                 /* below the hint (2) and toggle (3) */
+  background: #0d0d0d;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.info-canvas .ic-falls.in { opacity: 1; }
+.info-canvas .ic-falls-tile {
+  position: absolute;
+  left: 0; top: 0;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+  will-change: transform;    /* position + scale animated in JS */
+}
+.info-canvas .ic-falls-tile img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Wheel-mode controls (count + speed) — sit inline in the hint stack */
 .info-canvas .ic-controls {
   display: flex;

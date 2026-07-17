@@ -153,6 +153,12 @@ const SITE = {
     deckTilt: -0.6,      // ring tilt in radians (the ellipse angle)
     deckFlat: 0.34,      // ellipse flatness (minor/major); lower = thinner blade
 
+    // waterfall mode (a falling stream; hover makes a ripple/bulge)
+    fallsTile: 160,      // px — base image size
+    fallsSpeed: 55,      // fall speed in px/second
+    fallsRipple: 220,    // px — radius of the cursor bulge
+    fallsCount: 28,      // number of images in the stream
+
     defaultWidth: 250,   // px — window width for a normal (portrait/square) image
     wideWidth: 420,      // px — window width for a wide image (aspect > 1.3)
     hint: "",            // helper line ("" = auto, mode-appropriate text)
