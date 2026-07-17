@@ -965,12 +965,18 @@ function renderInfoCanvas() {
     if (t) trailMove(t.clientX, t.clientY);
   }, { passive: true });
 
-  // --- triggers: click empty canvas to place a keeper, Space to add, C to clear ---
+  // --- triggers: click to add an image, Space to add, C to clear ---
   canvas.addEventListener("click", (e) => {
     if (e.target.closest(".ic-window") || e.target.closest(".ic-toggle")) return;
     if (!pool.length) return;
-    const r = canvas.getBoundingClientRect();
-    dropImage({ x: e.clientX - r.left, y: e.clientY - r.top }); // permanent (no trail flag)
+    if (MODE === "trail") {
+      // trail mode: place a keeper right where you click
+      const r = canvas.getBoundingClientRect();
+      dropImage({ x: e.clientX - r.left, y: e.clientY - r.top });
+    } else {
+      // board mode: drop at a random spot on the board (ignore click position)
+      dropImage();
+    }
   });
   document.addEventListener("keydown", (e) => {
     if (!document.getElementById("info-canvas")) return;
