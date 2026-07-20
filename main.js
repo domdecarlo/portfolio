@@ -1309,40 +1309,46 @@ function renderInfoCanvas() {
     }, delay ?? INITIAL_DELAY);
   }
 
-  // --- fetch the whole channel, newest first ---
+  // --- fetch the whole channel (all pages), newest first → [{ url, filename }] ---
+  async function fetchPool() {
+    let all = [], page = 1, total = 0;
+    while (true) {
+      const res = await fetch(
+        // the timestamp/random query + no-store defeat caching so we always get
+        // the channel's current state, not a stale copy
+        `https://api.are.na/v2/channels/${slug}?per=100&page=${page}&_=${Date.now()}${Math.random()}`,
+        { cache: "no-store", headers: { "Cache-Control": "no-cache" } }
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (page === 1) total = data.length || 0;
+      const contents = data.contents || [];
+      all = all.concat(contents);
+      if (contents.length < 100 || (total && all.length >= total)) break;
+      page++;
+    }
+    // Newest first. Are.na uses `connected_at` for when a block was added to
+    // the channel; fall back to added_to_at/created_at for safety.
+    const when = (b) => new Date(b.connected_at || b.added_to_at || b.created_at || 0);
+    all.sort((a, b) => when(b) - when(a));
+    return all
+      .filter((b) => b.class === "Image" && b.image)
+      .map((b) => ({
+        url: (b.image.large || b.image.display || b.image.original).url,
+        filename: b.title || b.image.filename || "scrap.jpg",
+      }));
+  }
+
+  // --- load the channel fresh on every page visit (all modes draw from `pool`) ---
   async function load() {
     try {
-      let all = [], page = 1, total = 0;
-      while (true) {
-        const res = await fetch(
-          `https://api.are.na/v2/channels/${slug}?per=100&page=${page}&_=${Date.now()}${Math.random()}`,
-          { cache: "no-store", headers: { "Cache-Control": "no-cache" } }
-        );
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        if (page === 1) total = data.length || 0;
-        const contents = data.contents || [];
-        all = all.concat(contents);
-        if (contents.length < 100 || (total && all.length >= total)) break;
-        page++;
-      }
-      // Newest first. Are.na uses `connected_at` for when a block was added to
-      // the channel; fall back to added_to_at/created_at for safety.
-      const when = (b) => new Date(b.connected_at || b.added_to_at || b.created_at || 0);
-      all.sort((a, b) => when(b) - when(a));
-      pool = all
-        .filter((b) => b.class === "Image" && b.image)
-        .map((b) => ({
-          url: (b.image.large || b.image.display || b.image.original).url,
-          filename: b.title || b.image.filename || "scrap.jpg",
-        }));
-
+      pool = await fetchPool();
       if (!pool.length) { status.textContent = "No image scraps found."; return; }
       initGuaranteed();
       status.textContent = "";
       updateHint();
 
-      // Board auto-runs; deck lays out the cascade; trail waits for the cursor.
+      // Board auto-runs; deck/waterfall lay out; trail waits for the cursor.
       if (MODE === "board") startBoard();
       else if (MODE === "deck") buildDeck();
       else if (MODE === "waterfall") buildFalls();
