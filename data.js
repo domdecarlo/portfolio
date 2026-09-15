@@ -103,7 +103,7 @@ const SITE = {
     photo: "assets/img/info/head-knot.png",
     bio: [
       "Hi, I'm Dominic De Carlo, a Visual Designer & Illustrator based in San Francisco.",
-      "Focused on creating cohesive brand experiences and MFA brain design.",
+      "Focused on creating cohesive brand experiences with my MFA brain.",
     ],
     links: [
       { label: "Email", href: "mailto:dddecarlo@gmail.com" },
@@ -120,20 +120,31 @@ const SITE = {
     perPage: 24, // blocks fetched per scroll batch
   },
 
-  // ---- INFO CANVAS (right column of the Info page) ----
-  // An interactive image board that pulls the newest scraps from the Are.na
-  // channel above. Two modes, switchable with the on-canvas toggle (the
-  // visitor's choice is remembered):
+  // ---- INFO CANVAS (right column of the Info page + the landing stage) ----
+  // The scrap board: an interactive image board that pulls the newest scraps
+  // from the Are.na channel above. Three modes, switchable with the on-canvas
+  // toggle (each page remembers its own choice):
   //   "trail"  — images reveal along the cursor's path and fade as new ones
   //              arrive; anything you grab becomes a permanent keeper.
   //   "board"  — the original: click / Space / auto-drop into random spots.
-  // Every image is a draggable / resizable / rotatable / closeable window.
+  //   "wheel"  — a turning ring of images on a dark stage that streams fresh
+  //              scraps as it spins; hover pops one forward, clicking opens it
+  //              full-screen, and sliders on the canvas shape the ring.
+  // In trail and board every image is a draggable / resizable / rotatable /
+  // closeable window, the whole board can be tidied into a grid or scattered at
+  // random, and scraps are placed by clicking the canvas (or Space) — there's no
+  // add button. Wheel mode replaces the windows with the ring.
   infoCanvas: {
     enabled: true,
     channelSlug: "scrap-k6m8xpubrkg", // defaults to arena.channelSlug if omitted
-    mode: "trail",       // starting mode on desktop: "trail" or "board"
+    mode: "trail",       // starting mode on desktop: "trail", "board" or "wheel"
     mobileMode: "board", // starting mode on mobile/touch (trail needs a cursor)
-    showToggle: true,    // show the on-canvas Trail/Board switch
+    modeByPage: {        // per-page override of `mode`, keyed by data-page
+      "about.html": "board", // the Info page opens as a board
+    },
+    showToggle: true,    // show the on-canvas Trail/Board/Wheel switch
+    showActions: true,   // show the Tidy / Scatter / Clear button bar
+                         // keys: space add · t switch · g tidy · s scatter · c clear
 
     guaranteedNew: 15,   // reveal the newest N scraps first (in shuffled order)
 
@@ -145,6 +156,13 @@ const SITE = {
     initialDelay: 2500,  // ms before the board starts auto-dropping
     autoInterval: 2200,  // ms between auto-dropped images (0 = click/Space only)
     maxAuto: 0,          // stop auto after N images (0 = until the pool runs out)
+
+    // wheel mode (starting values — the on-canvas sliders move all of these)
+    deckCount: 40,       // images riding the ring
+    deckSpeed: 0.25,     // rotation speed in radians/sec (0 = parked)
+    deckTile: 200,       // px — image size on the ring
+    deckTilt: -0.6,      // ring tilt in radians (negative = rises to the right)
+    deckFlat: 0.34,      // ellipse flatness, height ÷ width (lower = more edge-on)
 
     defaultWidth: 250,   // px — window width for a normal (portrait/square) image
     wideWidth: 420,      // px — window width for a wide image (aspect > 1.3)

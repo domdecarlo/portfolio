@@ -541,13 +541,32 @@ function renderInfo() {
   }
 }
 
-/* ---------- info canvas (right column: Are.na image board) ----------
+/* ---------- landing page contact row (scrap-designer.html) ----------
+   Reuses SITE.info.links so the landing page and the Info page never drift. */
+function renderLandingLinks() {
+  const mount = document.getElementById("landing-links");
+  if (!mount) return;
+  (SITE.info?.links || []).forEach((l) =>
+    mount.append(el("a", { href: l.href, target: l.href.startsWith("http") ? "_blank" : null, rel: "noopener" }, l.label))
+  );
+}
+
+/* ---------- info canvas (the scrap board) ----------
    Pulls the newest scraps from the Are.na channel and drops each into a small
    draggable / resizable / rotatable / closeable window, scoped to #info-canvas.
-   Two modes, switchable via an on-canvas toggle (choice persists):
+   Drives both the Info page's right column and the full-bleed landing stage.
+   Three modes, switchable via an on-canvas toggle (each page remembers its own
+   choice; SITE.infoCanvas.modeByPage sets which one a page opens in):
      "board"  — click / Space / auto-drop into random spots (the original).
      "trail"  — images reveal along the cursor's path and fade as new ones come;
                 anything you grab becomes a permanent keeper.
+     "wheel"  — no windows at all: a slow-turning ring of images on a dark
+                stage that streams fresh scraps as it spins. Hover pops an
+                image forward, clicking opens it full-screen, and on-canvas
+                sliders shape the ring.
+   In board and trail the whole board can be tidied into a grid or scattered at
+   random, and scraps are placed by clicking the canvas (Space adds one too).
+   Keys: space add · t switch · g tidy/reshuffle · s scatter · c clear.
    Config: SITE.infoCanvas. */
 function renderInfoCanvas() {
   const canvas = document.getElementById("info-canvas");
@@ -567,17 +586,36 @@ function renderInfoCanvas() {
   const WIDE_W = cfg.wideWidth ?? 420;
   const TRAIL_DISTANCE = cfg.trailDistance ?? 90;
   const TRAIL_MAX = cfg.trailMax ?? 22;
-  const MODE_KEY = "decarlo:infoMode";
+  /* Wheel mode's ring. The code calls it the "deck" throughout — the same names
+     the ring was written with elsewhere in the site's history, kept so the two
+     copies stay easy to diff — while the button and the directions say "wheel". */
+  const DECK_TILE = cfg.deckTile ?? 200;     // wheel: base image size (px)
+  const DECK_COUNT = cfg.deckCount ?? 40;    // wheel: images around the ring
+  const DECK_SPEED = cfg.deckSpeed ?? 0.25;  // wheel: rotation speed (radians/sec, CCW)
+  const DECK_TILT = cfg.deckTilt ?? -0.6;    // wheel: ring tilt (radians)
+  const DECK_FLAT = cfg.deckFlat ?? 0.34;    // wheel: ellipse flatness (minor/major)
+  const DECK_SCALE_MIN = 0.5, DECK_SCALE_MAX = 1.15; // back → front size range
+  const MODES = ["trail", "board", "deck"];
+  const LABELS = { trail: "trail", board: "board", deck: "wheel" };
+  // config and the UI say "wheel"; the code says "deck"
+  const normalizeMode = (m) => (m === "wheel" ? "deck" : m);
+
+  /* Each page starts in its own mode and remembers its own choice, so switching
+     to trail on the landing page doesn't change how the Info page opens (and
+     vice versa) — hence the page in the storage key. */
+  const page = document.body.dataset.page || "landing";
+  const MODE_KEY = "decarlo:infoMode:" + page;
 
   // Mobile / touch defaults to board — the trail needs a hovering cursor.
   const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
-  const defaultMode = isMobile ? (cfg.mobileMode || "board") : (cfg.mode || "trail");
+  const pageMode = (cfg.modeByPage || {})[page];
+  const defaultMode = normalizeMode(isMobile ? (cfg.mobileMode || "board") : (pageMode || cfg.mode || "trail"));
 
-  // Starting mode: the visitor's saved choice always wins; otherwise use the
-  // device-appropriate default above.
+  // Starting mode: this page's saved choice always wins; otherwise use the
+  // device- and page-appropriate default above.
   let MODE = defaultMode;
-  try { MODE = localStorage.getItem(MODE_KEY) || defaultMode; } catch (e) {}
-  if (MODE !== "board" && MODE !== "trail") MODE = "trail";
+  try { MODE = normalizeMode(localStorage.getItem(MODE_KEY)) || defaultMode; } catch (e) {}
+  if (!MODES.includes(MODE)) MODE = "trail";
 
   // --- state ---
   let pool = [];                // {url, filename} sorted newest→oldest
@@ -590,39 +628,164 @@ function renderInfoCanvas() {
   let interacting = false;      // true while dragging/resizing/rotating a window
   const trailQueue = [];        // ambient (untouched) trail windows, oldest first
 
+  // wheel ("deck") state — the ring, its tiles, and the live slider values
+  let deck = null;                 // the ring's container element
+  let deckTiles = [], deckMeta = null, deckNextImg = 0, deckRAF = 0, deckRot = 0, deckSwapAcc = 0;
+  let deckCount = DECK_COUNT;      // ring size (adjustable)
+  let deckSpeed = DECK_SPEED;      // rotation speed (adjustable)
+  let deckTileSize = DECK_TILE;    // image size (adjustable)
+  let deckTilt = DECK_TILT;        // ring tilt in radians (adjustable)
+  let deckFlat = DECK_FLAT;        // ellipse flatness b/a (adjustable)
+  let deckControls = null, actionBar = null;
+  let lb = null, lbIdx = 0;        // full-screen viewer + the scrap it's showing
+
+  /* All windows live in their own layer. It's a stacking context, so however
+     high a window's z-index climbs it can never rise above the controls, which
+     are siblings of the layer. */
+  const layer = el("div", { class: "ic-layer" });
+  canvas.append(layer);
+
   // --- ui: hint + status + mode toggle, layered above the board ---
   const hint = el("div", { class: "ic-hint" });
   const status = el("div", { class: "ic-status" }, "Loading scraps…");
-  const keysEl = el("span", { class: "ic-hint-keys" });
+  const keysEl = el("div", { class: "ic-hint-keys" });
   hint.append(status, keysEl);
   canvas.append(hint);
 
+  /* The directions read as a stacked list down the left edge — one instruction
+     per line — so split the mode's line on its separators. */
   function updateHint() {
-    if (cfg.hint) { keysEl.textContent = cfg.hint; return; }
-    keysEl.textContent = MODE === "trail"
-      ? "move to reveal · drag to keep · t to switch · c to clear"
-      : "click / space to add · drag to organize · t to switch · c to clear";
+    const line =
+      cfg.hint ||
+      (MODE === "deck"
+        ? "a turning wheel · hover to zoom · click to enlarge · t switch · g reshuffle"
+        : (MODE === "trail" ? "move to reveal · drag to keep" : "click / space to add · drag to organize") +
+          " · t switch · g tidy · s scatter · c clear");
+    keysEl.textContent = "";
+    line
+      .split("·")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => keysEl.append(el("span", { class: "ic-hint-line" }, part)));
   }
 
   // mode toggle (top-right)
   if (cfg.showToggle !== false) {
     const toggle = el("div", { class: "ic-toggle" });
-    ["trail", "board"].forEach((m) => {
-      const b = el("button", { class: "ic-mode" + (m === MODE ? " on" : ""), "data-mode": m }, m);
+    MODES.forEach((m) => {
+      const b = el("button", { class: "ic-mode" + (m === MODE ? " on" : ""), "data-mode": m }, LABELS[m] || m);
       b.addEventListener("click", (e) => { e.stopPropagation(); if (m !== MODE) setMode(m); });
       toggle.append(b);
     });
     canvas.append(toggle);
   }
 
+  /* Action bar (under the mode toggle): the board-wide arrangements as buttons,
+     so the keyboard shortcuts aren't the only way in — needed on touch, where
+     there are no keys at all. Adding a scrap isn't in here: tap or click the
+     canvas (or hit Space) and one lands where you pointed. The bar is for the
+     window modes only, so wheel mode hides it and shows its sliders instead.
+     Set cfg.showActions = false to hide the bar. */
+  if (cfg.showActions !== false) {
+    const acts = [
+      ["tidy", "Tidy into a grid (g)", () => tidyUp()],
+      ["scatter", "Scatter at random (s)", () => scatter()],
+      ["clear", "Clear the board (c)", () => clearAll()],
+    ];
+    actionBar = el("div", { class: "ic-actions" });
+    acts.forEach(([label, title, fn]) => {
+      const b = el("button", { class: "ic-act", type: "button", title }, label);
+      b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+      actionBar.append(b);
+    });
+    if (MODE === "deck") actionBar.style.display = "none";
+    canvas.append(actionBar);
+  }
+
+  /* Wheel sliders, stacked under the directions: how many images ride the ring,
+     how fast it turns, how the ellipse is tilted and flattened, and how big the
+     images are. They only appear in wheel mode. */
+  {
+    // one labelled range row
+    const makeRow = (labelText, attrs, onInput) => {
+      const lab = el("span", { class: "ic-slider-label" }, labelText);
+      const range = el("input", Object.assign({ type: "range", class: "ic-slider-range" }, attrs));
+      range.addEventListener("input", (e) => { e.stopPropagation(); onInput(range, lab); });
+      range.addEventListener("click", (e) => e.stopPropagation());
+      return el("div", { class: "ic-slider" }, lab, range);
+    };
+    // tilt / shape / size only move the tiles, so re-place them where they are
+    const relayoutDeck = () => { if (deckMeta) deckTiles.forEach(layoutTile); };
+
+    deckControls = el("div", { class: "ic-controls" });
+    let countTO = null;
+    deckControls.append(makeRow(
+      deckCount + " images",
+      { min: "20", max: "60", value: String(deckCount), "aria-label": "Number of images" },
+      (range, lab) => {
+        deckCount = parseInt(range.value) || deckCount;
+        lab.textContent = deckCount + " images";
+        // a new count means a new ring; debounce so dragging doesn't rebuild per pixel
+        clearTimeout(countTO);
+        countTO = setTimeout(() => { if (MODE === "deck") { const r = deckRot; buildDeck(); deckRot = r; } }, 40);
+      }
+    ));
+    deckControls.append(makeRow(
+      "speed",
+      { min: "0", max: "1.2", step: "0.05", value: String(deckSpeed), "aria-label": "Rotation speed" },
+      (range) => { deckSpeed = parseFloat(range.value); }   // 0 = parked
+    ));
+    deckControls.append(makeRow(
+      "tilt",
+      { min: "-90", max: "90", step: "1", value: String(Math.round(deckTilt * 180 / Math.PI)), "aria-label": "Ring tilt" },
+      (range) => {
+        deckTilt = parseFloat(range.value) * Math.PI / 180;
+        if (deckMeta) { deckMeta.cosT = Math.cos(deckTilt); deckMeta.sinT = Math.sin(deckTilt); }
+        relayoutDeck();
+      }
+    ));
+    deckControls.append(makeRow(
+      "shape",
+      { min: "0.12", max: "0.7", step: "0.02", value: String(deckFlat), "aria-label": "Ellipse shape" },
+      (range) => {
+        deckFlat = parseFloat(range.value);
+        if (deckMeta) deckMeta.b = deckMeta.a * deckFlat;
+        relayoutDeck();
+      }
+    ));
+    deckControls.append(makeRow(
+      "size",
+      { min: "100", max: "320", step: "10", value: String(deckTileSize), "aria-label": "Image size" },
+      (range) => {
+        deckTileSize = parseInt(range.value) || deckTileSize;
+        deckTiles.forEach((t) => { t.el.style.width = deckTileSize + "px"; });
+      }
+    ));
+    deckControls.style.display = MODE === "deck" ? "flex" : "none";
+    hint.append(deckControls);
+  }
+
   function setMode(m) {
+    const prev = MODE;
     MODE = m;
     try { localStorage.setItem(MODE_KEY, m); } catch (e) {}
     canvas.querySelectorAll(".ic-mode").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
     updateHint();
-    if (m === "board") startBoard(300);
-    else stopAuto();
+    // the sliders belong to the wheel, the action bar to the window modes
+    if (deckControls) deckControls.style.display = m === "deck" ? "flex" : "none";
+    if (actionBar) actionBar.style.display = m === "deck" ? "none" : "flex";
+    if (prev === "deck" && m !== "deck") destroyDeck();
+    if (m === "deck") {
+      stopAuto();
+      // the ring owns the whole canvas, so sweep the windows off it first
+      if (prev !== "deck") { clearAll(); buildDeck(); }
+    } else if (m === "board") {
+      startBoard(300);
+    } else {
+      stopAuto();
+    }
   }
+  const cycleMode = () => setMode(MODES[(MODES.indexOf(MODE) + 1) % MODES.length]);
 
   const shuffle = (arr) => {
     const a = [...arr];
@@ -772,7 +935,7 @@ function renderInfoCanvas() {
       pruneTrail();
     }
 
-    canvas.append(win);
+    layer.append(win);
     return true;
   }
 
@@ -784,6 +947,245 @@ function renderInfoCanvas() {
     autoCount = 0;
     initGuaranteed();
   }
+
+  // animate left/top/width/rotation to their new values, then drop the class so
+  // it can't slow down a subsequent drag
+  function tween(win) {
+    win.classList.add("ic-tween");
+    setTimeout(() => win.classList.remove("ic-tween"), 520);
+  }
+
+  /* Tidy up — pack everything on the board into a centered grid: uniform width,
+     rotation straightened, natural heights preserved, stacking order flattened.
+     Tidied windows become keepers (an arranged board shouldn't decay). */
+  function tidyUp() {
+    const wins = [...canvas.querySelectorAll(".ic-window")];
+    if (!wins.length) return;
+
+    const GAP = 14;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    const W = Math.min(DEF_W, Math.max(120, cw - GAP * 2));
+    const cols = Math.max(1, Math.min(wins.length, Math.floor((cw - GAP) / (W + GAP))));
+
+    // straighten and set the shared width first, then measure the real heights
+    wins.forEach((win) => {
+      markTouched(win);
+      tween(win);
+      win.dataset.rotation = "0";
+      win.style.transform = "rotate(0deg)";
+      win.style.width = W + "px";
+      win.style.height = "";       // back to natural (a resize may have fixed it)
+      win.style.zIndex = baseZ;
+    });
+
+    // row heights come from the tallest window in each row
+    const rows = [];
+    wins.forEach((win, i) => {
+      const r = Math.floor(i / cols);
+      (rows[r] || (rows[r] = [])).push(win);
+    });
+    const rowH = rows.map((row) => Math.max(...row.map((w) => w.offsetHeight)));
+    const gridH = rowH.reduce((a, b) => a + b + GAP, -GAP);
+    const gridW = Math.min(cols, wins.length) * (W + GAP) - GAP;
+
+    // center the block; if it's taller than the canvas, start at the top edge
+    const x0 = Math.max(GAP, Math.round((cw - gridW) / 2));
+    const y0 = gridH < ch ? Math.round((ch - gridH) / 2) : GAP;
+
+    let y = y0;
+    rows.forEach((row, r) => {
+      const rowW = row.length * (W + GAP) - GAP;
+      // last row keeps the same left edge as the full rows above it
+      const rx = row.length === cols ? x0 : Math.max(GAP, Math.round((cw - rowW) / 2));
+      row.forEach((win, c) => {
+        win.style.left = rx + c * (W + GAP) + "px";
+        win.style.top = y + "px";
+      });
+      y += rowH[r] + GAP;
+    });
+  }
+
+  /* Scatter — the opposite of tidy: scramble everything back out to random spots
+     with a random tilt. Also makes each window a keeper. */
+  function scatter() {
+    const wins = [...canvas.querySelectorAll(".ic-window")];
+    if (!wins.length) return;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    wins.forEach((win) => {
+      markTouched(win);
+      tween(win);
+      const w = win.offsetWidth, h = win.offsetHeight;
+      win.style.left = Math.round(Math.random() * Math.max(1, cw - w)) + "px";
+      win.style.top = Math.round(Math.random() * Math.max(1, ch - h)) + "px";
+      const deg = (Math.random() * 2 - 1) * 14;
+      win.style.transform = "rotate(" + deg + "deg)";
+      win.dataset.rotation = deg;
+      win.style.zIndex = topZ() + 1;
+    });
+  }
+
+  /* ---------- WHEEL ("deck"): a slow-turning ring of images ----------
+     No windows here: the ring takes over the canvas on a dark stage. Every tile
+     owns a fixed angle on a tilted ellipse; one shared rotation moves them all,
+     and a fake perspective (nearer = bigger, brighter, on top) sells the depth.
+     As it turns, whichever tile is furthest back quietly swaps in the next scrap
+     from the channel, so the wheel keeps streaming instead of looping. */
+  const prefersReducedMotion = () =>
+    !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // Place ONE tile for the ring's current rotation. Called for every tile on
+  // every animation frame — this constant re-placing is what makes it spin.
+  function layoutTile(t) {
+    const m = deckMeta;
+    // the tile's own angle plus the shared rotation; every tile shares deckRot,
+    // so they all travel together
+    const phi = t.phi + deckRot;
+    // cos/sin trace a circle; a (wide) and b (short) squash it into an ellipse
+    const lx = m.a * Math.cos(phi), ly = m.b * Math.sin(phi);
+    // rotate that point by the tilt, then offset from the canvas centre
+    const x = m.cx + lx * m.cosT - ly * m.sinT;
+    const y = m.cy + lx * m.sinT + ly * m.cosT;
+    // depth: 0 = far side of the ring, 1 = nearest. Drives the perspective.
+    const depth = (Math.sin(phi) + 1) / 2;
+    // ease the hover "pop" toward its target a little each frame
+    t.boost += ((t.hot ? 1 : 0) - t.boost) * 0.2;
+    const s = (DECK_SCALE_MIN + (DECK_SCALE_MAX - DECK_SCALE_MIN) * depth) * (1 + 0.18 * t.boost);
+    // position, centre-align and scale in one transform (cheap for the GPU)
+    t.el.style.transform = "translate(" + x + "px," + y + "px) translate(-50%,-50%) scale(" + s + ")";
+    t.el.style.zIndex = t.hot ? 100000 : Math.round(depth * 1000);
+    t.el.style.opacity = (0.72 + 0.28 * depth).toFixed(3);   // far tiles sit back
+  }
+
+  // Build the ring: make the tiles, space them evenly, then start it turning.
+  function buildDeck() {
+    destroyDeck();                       // never leave a second ring behind
+    if (!pool.length) return;
+    deck = el("div", { class: "ic-deck" });
+    canvas.append(deck);
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    const N = Math.min(deckCount, Math.max(6, pool.length));
+    // a = half the ellipse's width, b = half its height (deckFlat flattens it)
+    const a = Math.min(cw, ch) * 0.46, b = a * deckFlat;
+    // cache the geometry (and cos/sin of the tilt) so layoutTile isn't
+    // recomputing them for every tile 60 times a second
+    deckMeta = { cx: cw / 2, cy: ch / 2, a, b, N, cosT: Math.cos(deckTilt), sinT: Math.sin(deckTilt) };
+    deckTiles = []; deckRot = 0; deckNextImg = 0; deckSwapAcc = 0;
+    for (let i = 0; i < N; i++) {
+      const tile = el("div", { class: "ic-deck-tile" });
+      tile.style.width = deckTileSize + "px";
+      const img = el("img", { alt: "", loading: "lazy", draggable: "false" });
+      const idx = deckNextImg % pool.length;   // pool is newest-first
+      img.src = pool[idx].url;
+      tile.dataset.poolIndex = idx;             // which scrap this is showing
+      deckNextImg++;
+      tile.append(img);
+      // tile i sits at i/N of the way around the circle
+      const t = { el: tile, img, phi: (i / N) * Math.PI * 2, hot: false, boost: 0 };
+      tile.addEventListener("click", (e) => { e.stopPropagation(); openLightbox(parseInt(tile.dataset.poolIndex)); });
+      tile.addEventListener("mouseenter", () => { t.hot = true; });   // pops via layoutTile; the ring keeps turning
+      tile.addEventListener("mouseleave", () => { t.hot = false; });
+      layoutTile(t);                            // starting position
+      deck.append(tile);
+      deckTiles.push(t);
+    }
+    requestAnimationFrame(() => deck && deck.classList.add("in"));  // fade the stage in
+    if (!prefersReducedMotion()) startDeckLoop();                   // otherwise leave it parked
+  }
+
+  // The animation loop: advance one shared angle, re-draw every tile, repeat.
+  function startDeckLoop() {
+    cancelAnimationFrame(deckRAF);        // never run two loops at once
+    let last = performance.now();
+    const tick = (now) => {
+      // dt = ms since the last frame, capped so a backgrounded tab doesn't
+      // resume with one huge jump. Using dt keeps the speed frame-rate independent.
+      const dt = Math.min(64, now - last); last = now;
+      if (deckMeta) {
+        deckRot -= (deckSpeed * dt) / 1000;   // subtract = counter-clockwise
+        if (deckSpeed > 0) {
+          // every time the ring turns by one tile's worth of angle, retire the
+          // rear tile and give it a fresh scrap
+          const slot = ((2 * Math.PI) / deckMeta.N) / deckSpeed * 1000;   // ms per image
+          deckSwapAcc += dt;
+          if (deckSwapAcc >= slot) { deckSwapAcc -= slot; swapBackTile(); }
+        }
+        deckTiles.forEach(layoutTile);
+      }
+      deckRAF = requestAnimationFrame(tick);
+    };
+    deckRAF = requestAnimationFrame(tick);
+  }
+
+  // Whichever tile is furthest back gets the next image in the channel — the
+  // swap happens out of sight, so the ring never looks like a fixed set looping.
+  function swapBackTile() {
+    let back = null, min = 2;             // sin() maxes out at 1, so 2 is a safe start
+    deckTiles.forEach((t) => { const d = Math.sin(t.phi + deckRot); if (d < min) { min = d; back = t; } });
+    if (back) {
+      const idx = deckNextImg % pool.length;
+      back.img.src = pool[idx].url;
+      back.el.dataset.poolIndex = idx;
+      deckNextImg++;
+    }
+  }
+
+  // Tear the ring down: stop the loop, drop the elements. Used when leaving
+  // wheel mode and before every rebuild.
+  function destroyDeck() {
+    cancelAnimationFrame(deckRAF); deckRAF = 0;
+    if (deck) { deck.remove(); deck = null; }
+    deckTiles = []; deckMeta = null;
+  }
+
+  /* The ellipse is sized from the canvas, so a window resize has to re-measure
+     it. Rebuild (debounced) and put the rotation back where it was, so the wheel
+     doesn't visibly snap. */
+  let deckResizeTO = null;
+  window.addEventListener("resize", () => {
+    if (MODE !== "deck" || !deckMeta) return;
+    clearTimeout(deckResizeTO);
+    deckResizeTO = setTimeout(() => {
+      if (MODE !== "deck") return;
+      const r = deckRot;
+      buildDeck();
+      deckRot = r;
+    }, 150);
+  });
+
+  /* ---------- full-screen viewer (wheel mode) ----------
+     Clicking a tile opens the scrap at full size; arrows walk the channel and
+     Esc closes. Built once, on first use. */
+  function buildLightbox() {
+    lb = el("div", { class: "ic-lightbox", "aria-hidden": "true" });
+    const img = el("img", { class: "ic-lb-img", alt: "" });
+    const cap = el("figcaption", { class: "ic-lb-cap" });
+    const fig = el("figure", { class: "ic-lb-figure" }, img, cap);
+    const close = el("button", { class: "ic-lb-close", "aria-label": "Close" }, "✕");
+    const prev = el("button", { class: "ic-lb-nav ic-lb-prev", "aria-label": "Previous" }, "‹");
+    const next = el("button", { class: "ic-lb-nav ic-lb-next", "aria-label": "Next" }, "›");
+    lb.append(close, prev, next, fig);
+    document.body.append(lb);
+    close.addEventListener("click", (e) => { e.stopPropagation(); closeLightbox(); });
+    prev.addEventListener("click", (e) => { e.stopPropagation(); lbShow(lbIdx - 1); });
+    next.addEventListener("click", (e) => { e.stopPropagation(); lbShow(lbIdx + 1); });
+    // clicking the backdrop (or the empty space around the image) closes it
+    lb.addEventListener("click", (e) => { if (e.target === lb || e.target.classList.contains("ic-lb-figure")) closeLightbox(); });
+  }
+  function lbShow(i) {
+    lbIdx = (i + pool.length) % pool.length;   // wraps at both ends
+    lb.querySelector(".ic-lb-img").src = pool[lbIdx].url;
+    lb.querySelector(".ic-lb-cap").textContent = pool[lbIdx].filename || "";
+  }
+  function openLightbox(i) {
+    if (!lb) buildLightbox();
+    lbShow(i);
+    lb.classList.add("open");
+    lb.setAttribute("aria-hidden", "false");
+  }
+  function closeLightbox() {
+    if (lb) { lb.classList.remove("open"); lb.setAttribute("aria-hidden", "true"); }
+  }
+  const lbOpen = () => !!(lb && lb.classList.contains("open"));
 
   // --- drag (grab anywhere except the control handles) ---
   function makeDraggable(win) {
@@ -939,8 +1341,9 @@ function renderInfoCanvas() {
       status.textContent = "";
       updateHint();
 
-      // Board mode auto-runs; trail mode waits for the cursor.
+      // Board mode auto-runs, the wheel builds its ring, trail waits for the cursor.
       if (MODE === "board") startBoard();
+      else if (MODE === "deck") buildDeck();
     } catch (err) {
       status.textContent = "Couldn't load Are.na channel “" + slug + ".”";
     }
@@ -965,20 +1368,41 @@ function renderInfoCanvas() {
     if (t) trailMove(t.clientX, t.clientY);
   }, { passive: true });
 
-  // --- triggers: click empty canvas to place a keeper, Space to add, C to clear ---
+  /* --- triggers: click the empty canvas to add a keeper, Space to add, G/S to
+     arrange, C to clear. The add button is gone on purpose — clicking the board
+     is the add. In board mode the scrap lands somewhere random rather than under
+     the cursor; trail mode still places at the cursor, since that mode is all
+     about the pointer's path. Wheel mode opts out entirely: its tiles handle
+     their own clicks (they open the full-screen view). */
   canvas.addEventListener("click", (e) => {
-    if (e.target.closest(".ic-window") || e.target.closest(".ic-toggle")) return;
+    if (MODE === "deck") return;
+    if (e.target.closest(".ic-window") || e.target.closest(".ic-toggle") || e.target.closest(".ic-actions")) return;
     if (!pool.length) return;
+    if (MODE === "board") { dropImage(); return; } // random spot (no coords)
     const r = canvas.getBoundingClientRect();
     dropImage({ x: e.clientX - r.left, y: e.clientY - r.top }); // permanent (no trail flag)
   });
   document.addEventListener("keydown", (e) => {
     if (!document.getElementById("info-canvas")) return;
+    // while the full-screen view is open the arrows walk it and Esc closes it
+    if (lbOpen()) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") lbShow(lbIdx - 1);
+      else if (e.key === "ArrowRight") lbShow(lbIdx + 1);
+      return;
+    }
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
-    if (e.code === "Space" || e.key === " ") { e.preventDefault(); dropImage(); }
-    else if (e.key === "c" || e.key === "C") { clearAll(); }
-    else if (e.key === "t" || e.key === "T") { setMode(MODE === "trail" ? "board" : "trail"); }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    // add / scatter / clear act on windows, so the wheel ignores them; G
+    // reshuffles its ring instead of tidying a grid.
+    const wheel = MODE === "deck";
+    if (e.code === "Space" || e.key === " ") { if (!wheel) { e.preventDefault(); dropImage(); } }
+    else if (k === "c") { if (!wheel) clearAll(); }
+    else if (k === "t") { cycleMode(); }
+    else if (k === "g") { wheel ? buildDeck() : tidyUp(); }
+    else if (k === "s") { if (!wheel) scatter(); }
   });
 
   load();
@@ -1183,6 +1607,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderArena();
   renderGrid();
   renderInfo();
+  renderLandingLinks();
   renderInfoCanvas();
   initProjectPage();
   window.addEventListener("resize", syncStackHeight);

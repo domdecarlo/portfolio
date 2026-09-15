@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Scrap Designer — Dominic DeCarlo</title>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="scrap-designer.html" class="landing">
+  <header class="topbar"></header>
+
+  <!-- Single full-viewport stage: the Are.na scrap board fills it edge to edge
+       (same #info-canvas that main.js drives on the Info page) and the headline
+       sits on top of it. The headline layer is pointer-transparent so the
+       cursor trail, dragging, rotating and resizing all still reach the board. -->
+  <main class="landing-stage">
+    <div id="info-canvas" class="info-canvas"></div>
+
+    <div class="landing-title">
+      <h1 class="landing-name">Dominic DeCarlo</h1>
+      <p class="landing-sub">The Scrap Designer</p>
+      <div class="landing-links" id="landing-links"></div>
+    </div>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
