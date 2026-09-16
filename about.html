@@ -3,25 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dominic DeCarlo — Info</title>
-  <link rel="stylesheet" href="styles.css" />
+
+  <!-- The Info page moved from /about to /info. GitHub Pages can't issue a real
+       301, so this stub stands in: canonical hands the ranking signals to /info,
+       the meta refresh covers crawlers and no-JS visitors, and the script makes
+       it instant (and keeps /about out of the back-button history). Safe to
+       delete once nothing links to /about any more. -->
+  <title>Redirecting to Info — Dominic DeCarlo</title>
+  <link rel="canonical" href="https://decarlo.design/info" />
+  <meta http-equiv="refresh" content="0; url=/info" />
+  <script>location.replace("/info");</script>
 </head>
-<body data-page="about.html">
-  <header class="topbar"></header>
-
-  <div class="layout">
-    <!-- LEFT: photo + bio + contact -->
-    <aside class="left" id="info-left"></aside>
-
-    <div class="divider" title="Drag to resize · double-click to reset"></div>
-
-    <!-- RIGHT: reserved for an interactive image collection (blank for now) -->
-    <main class="right">
-      <div id="info-canvas" class="info-canvas"></div>
-    </main>
-  </div>
-
-  <script src="data.js"></script>
-  <script src="main.js"></script>
+<body>
+  <p>The Info page has moved to <a href="/info">decarlo.design/info</a>.</p>
 </body>
 </html>

@@ -6,8 +6,10 @@
 
 /* Templates
    PROJECTS
-   Each project is a grid tile on the home page and a page at
-   project.html?id=<id>.
+   Each project is a grid tile on the home page and a page at /work/<id>.
+   That page is generated from this file, and pushing rebuilds it automatically
+   (.github/workflows/prerender.yml), so adding a project here is enough.
+   Run `node build-seo.mjs` yourself only to preview the change locally.
 
    Core fields:
      id      unique, lowercase, no spaces
@@ -16,6 +18,19 @@
      tags    disciplines, shown on the grid tile
      cover   grid-tile image (fallback when `images` is empty)
      images  grid-tile carousel media (img or video)
+
+   SEO / LINK PREVIEWS — what goes in the <head> of /work/<id>: the Google
+   result, and the card Slack, iMessage, LinkedIn and X unfurl when the link
+   gets shared.
+     seoDescription  optional, ~155 characters of plain text. Without it the
+                     first `text` in `sidebar` is used — tags stripped, cut to
+                     length on a word boundary. Set this whenever that opening
+                     paragraph doesn't stand on its own out of context.
+   Derived, not settable here:
+     the title is always "<SITE.name> — <title>";
+     the preview image is `cover`, or the first usable entry in `images` if
+     `cover` is missing from disk, or assets/img/info/head-knot.png;
+     the URL comes from `id` — renaming it breaks links already shared.
 
    MAIN COLUMN — `content`: a flat list of blocks, rendered in order.
      content: [
@@ -84,12 +99,12 @@ const SITE = {
   // A nav item can be a plain link, or a dropdown by giving it a `children`
   // array of { label, href } (external http links open in a new tab).
   nav: [
-    //{ label: "Work", href: "index.html" },
-    { label: "INFO", href: "about.html" },
+    //{ label: "Work", href: "/" },
+    { label: "INFO", href: "/info" },
     {
       label: "MORE",
       children: [
-        { label: "Scrap", href: "scraps.html" },
+        { label: "Scrap", href: "/scraps" },
         { label: "Archive", href: "https://dominicdecarlo.com" },
       ],
     },
@@ -140,7 +155,7 @@ const SITE = {
     mode: "trail",       // starting mode on desktop: "trail", "board" or "wheel"
     mobileMode: "board", // starting mode on mobile/touch (trail needs a cursor)
     modeByPage: {        // per-page override of `mode`, keyed by data-page
-      "about.html": "board", // the Info page opens as a board
+      "info.html": "board", // the Info page opens as a board
     },
     showToggle: true,    // show the on-canvas Trail/Board/Wheel switch
     showActions: true,   // show the Tidy / Scatter / Clear button bar
@@ -213,6 +228,7 @@ const PROJECTS = [
     title: "Strava",
     year: "2024-",
     tags: "Brand Design",
+    seoDescription: "Brand identity, GTM campaigns, event design and product animation at Strava, shaping how the brand looks and moves for millions of active people.",
     private: true, // locked placeholder — see gating notes above
     cover: "assets/img/strava/strava-1.jpg", // grid-tile image
     images: [
@@ -256,6 +272,7 @@ const PROJECTS = [
     title: "Solv Health",
     year: "2022-2023",
     tags: "Brand Design, Illustration",   // shown on the home grid tile
+    seoDescription: "Brand redesign, website and illustration system for Solv Health, the startup that makes booking same-day, walk-in care as easy as reserving a table.",
     cover: "assets/img/solv/solv-1.jpg",
     lightboxBg: "#000000" ,
     lightboxCaption: "#FFFFFF",
@@ -308,6 +325,7 @@ const PROJECTS = [
   title: "Lam Family College of Business",
   year: "2019-2021",
   tags: "BRAND DESIGN",
+  seoDescription: "Art direction, brand identity and web design for the Lam Family College of Business at SF State, spanning print, campaigns and the college's website.",
   private: false, // locked placeholder — see gating notes above
   cover: "assets/img/sfstate/sfstate-1.jpg", // grid-tile image
   images: [
@@ -367,6 +385,7 @@ const PROJECTS = [
     title: "The Bitches Present 'New Baby Iron Age'",
     year: "2020",
     tags: "Brand Design, Illustration",
+    seoDescription: "Album and editorial design for The Bitches Present: a double 180g vinyl in a Japanese gatefold, packaged with a 40-page broadsheet of photos and poetry.",
     private: false, // locked placeholder — see gating notes above
     cover: "assets/img/newbabyironage/newbabyironage-1.jpg", // grid-tile image
     lightboxBg: "#840075" ,
@@ -417,6 +436,7 @@ const PROJECTS = [
     title: "Surveillance Self Defense",
     year: "2018",
     tags: "Brand Design",
+    seoDescription: "An EFF rebrand and Surveillance Self-Defense toolkit of Risograph-printed booklets, posters and PGP kits, built to teach digital privacy as a habit.",
     cover: "assets/img/ssd/ssd-1.jpg", // TODO: swap for a real cover image
     images: [
       "assets/img/ssd/ssd-1.jpg",
@@ -489,8 +509,9 @@ const PROJECTS = [
     title: "PEÑA",
     year: "Ongoing",
     tags: "Brand Design, Illustration, Animation",
+    seoDescription: "Album art, merchandise, illustration and animation for PEÑA, the project of Chilean-American artist Nico Peña: bedroom bossa nova and Latin jazz.",
     private: false, // locked placeholder — see gating notes above
-    cover: "assets/img/pena/pena-1.jpg", // grid-tile image
+    cover: "assets/img/pena/pena-1.gif", // grid-tile image
     lightboxBg: "#840075" ,
     lightboxCaption: "#FFFFFF",
     images: [
@@ -539,8 +560,9 @@ const PROJECTS = [
   title: "SF State Bold Thinking",
   year: "2018",
   tags: "BRAND DESIGN, WEB DESIGN",
+  seoDescription: "Logo redesign, brand refresh and Drupal website for Bold Thinking, San Francisco State University's alumni and donor fundraising campaign.",
   private: false, // locked placeholder — see gating notes above
-  cover: "assets/img/boldthinking/sfstate-1.jpg", // grid-tile image
+  cover: "assets/img/boldthinking/boldthinking-1.jpg", // grid-tile image
   lightboxBg: "#840075",
   lightboxCaption: "#FFFFFF",
   images: [
@@ -583,6 +605,7 @@ const PROJECTS = [
     title: "AI Partnerships Corporation",
     year: "2020",
     tags: "Brand Design, Web Design",
+    seoDescription: "Brand identity and website design for AI Partnerships Corporation, an affiliate network connecting enterprises with AI-enabled solution integrators.",
     private: false, // locked placeholder — see gating notes above
     cover: "assets/img/aip/aip-1.jpg", // grid-tile image
     images: [
@@ -629,6 +652,7 @@ const PROJECTS = [
     title: "Waving",
     year: "2017",
     tags: "Print Design",
+    seoDescription: "A 56-page saddle-bound booklet on the wave: an 18th-century gesture that began as proof of empty hands, and how its meaning still shifts by region.",
     private: false, // locked placeholder — see gating notes above
     cover: "assets/img/waving/waving-1.jpg", // TODO: swap for a real cover image
     images: [
@@ -673,6 +697,7 @@ const PROJECTS = [
     title: "Tutto è Pasta",
     year: "2023",
     tags: "Brand Design",
+    seoDescription: "Branding and packaging for Tutto è Pasta, a batch of fresh egg pasta made as a Christmas gift for an Italian-American family that never serves one kind.",
     private: false, // locked placeholder — see gating notes above
     lightboxBg: "#000000",
     lightboxCaption: "#FFFFFF",

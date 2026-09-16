@@ -17,19 +17,40 @@ const el = (tag, attrs = {}, ...kids) => {
 const qs = (name) => new URLSearchParams(location.search).get(name);
 
 /* ---------- top bar (3 zones: left wordmark / center info / right nav) ---------- */
+/* Links are written without .html (GitHub Pages resolves /info -> info.html),
+   but `data-page` on <body> still uses the filename as its internal key — it's
+   also what data.js keys `modeByPage` on. So compare pages by a normalized key
+   instead of by raw string, letting the two forms differ freely.
+   Returns null for anything that isn't a local page (http, mailto, #). */
+function pageKey(href) {
+  const s = String(href || "").split(/[?#]/)[0];
+  if (!s || /^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith("#")) return null;
+  return (
+    s
+      .replace(/^\/+/, "")
+      .replace(/(^|\/)index\.html$/, "")
+      .replace(/\.html$/, "")
+      .replace(/\/$/, "") || "index"
+  );
+}
+const samePage = (a, b) => {
+  const k = pageKey(a);
+  return k !== null && k === pageKey(b);
+};
+
 function renderTopbar(activeHref) {
   const bar = document.querySelector(".topbar");
   if (!bar) return;
 
   // LEFT: logo mark + wordmark
-  const left = el("a", { class: "tb-left", href: "index.html" });
+  const left = el("a", { class: "tb-left", href: "/" });
   if (SITE.logo) left.append(el("img", { class: "tb-logo", src: SITE.logo, alt: "" }));
   else left.append(el("span", { class: "tb-logo-mark" }, "◎"));
   left.append(el("span", { class: "wordmark" }, SITE.name));
 
   // CENTER: flexible zone. On the home page it carries the intro description
   // (next to the wordmark); on other pages it uses the generic centerInfo/links.
-  const isHome = activeHref === "index.html";
+  const isHome = samePage(activeHref, "index.html");
   const center = el("div", { class: "tb-center" });
   const infoHtml = isHome && SITE.intro ? SITE.intro : SITE.centerInfo;
   if (infoHtml) center.append(el("span", { class: "tb-info", html: infoHtml }));
@@ -48,7 +69,7 @@ function renderTopbar(activeHref) {
   SITE.nav.forEach((n) => {
     if (n.children?.length) {
       const wrap = el("div", { class: "tb-dropdown" });
-      const childActive = n.children.some((c) => c.href === activeHref);
+      const childActive = n.children.some((c) => samePage(c.href, activeHref));
       const toggle = el(
         "button",
         {
@@ -67,7 +88,7 @@ function renderTopbar(activeHref) {
             "a",
             {
               href: c.href,
-              class: c.href === activeHref ? "active" : "",
+              class: samePage(c.href, activeHref) ? "active" : "",
               target: ext ? "_blank" : null,
               rel: ext ? "noopener" : null,
             },
@@ -100,7 +121,7 @@ function renderTopbar(activeHref) {
 
       nav.append(wrap);
     } else {
-      nav.append(el("a", { href: n.href, class: n.href === activeHref ? "active" : "" }, n.label));
+      nav.append(el("a", { href: n.href, class: samePage(n.href, activeHref) ? "active" : "" }, n.label));
     }
   });
 
@@ -326,7 +347,7 @@ function renderGrid() {
   // Only fully hidden projects are kept off the grid; private ones still show
   // (clickable into a locked placeholder page).
   PROJECTS.filter((p) => !p.hidden).forEach((p) => {
-    const href = `project.html?id=${encodeURIComponent(p.id)}`;
+    const href = projectHref(p);
     const tile = el("div", { class: "tile" });
     tile.append(makeTileCarousel(p, href));
     tile.append(
@@ -348,7 +369,19 @@ function renderGrid() {
 }
 
 /* ---------- helpers for project pages ---------- */
-const currentProject = () => PROJECTS.find((x) => x.id === qs("id")) || PROJECTS[0];
+/* A project's canonical URL slug and href. Prerendered pages are written to
+   work/<slug>.html — see build-seo.mjs, which must use this same slug rule —
+   and served at /work/<slug>, since GitHub Pages resolves the extension.
+   Root-relative, so the href is the same from any page depth. */
+const projectSlug = (p) => String(p.id).toLowerCase();
+const projectHref = (p) => `/work/${encodeURIComponent(projectSlug(p))}`;
+
+/* Which project this page shows. `?id=` wins (legacy project.html?id=… links);
+   otherwise fall back to the prerendered page's data-project-id (work/<id>/). */
+const currentProject = () => {
+  const id = qs("id") || document.body.dataset.projectId;
+  return PROJECTS.find((x) => x.id === id) || PROJECTS[0];
+};
 const isVideo = (src) => /\.(mp4|webm|mov)$/i.test(src);
 
 /* Normalize a YouTube/Vimeo (or already-embed) URL into an embeddable player URL. */
@@ -492,7 +525,7 @@ function renderProjectInfo() {
 
   // Back link shows only on mobile (replaces the "Info" label there);
   // the "Info" label shows only on desktop.
-  mount.append(el("a", { class: "pi-back", href: "index.html" }, "← WORK"));
+  mount.append(el("a", { class: "pi-back", href: "/" }, "← WORK"));
   mount.append(el("p", { class: "left-heading pi-head-label" }, "Info"));
   const info = el("div", { class: "proj-info" });
 
@@ -1417,7 +1450,7 @@ function renderPrivatePlaceholder(p) {
   const mount = document.getElementById("detail");
   document.title = SITE.name + " — " + p.title;
 
-  mount.append(el("a", { class: "back", href: "index.html" }, "← WORK"));
+  mount.append(el("a", { class: "back", href: "/" }, "← WORK"));
 
   const lock = el("div", { class: "private-lock" });
   // Optional blurred backdrop from the project's cover (if one is set).
@@ -1520,7 +1553,7 @@ function renderDetail() {
   const p = currentProject();
   document.title = SITE.name + " — " + p.title;
 
-  mount.append(el("a", { class: "back", href: "index.html" }, "← WORK"));
+  mount.append(el("a", { class: "back", href: "/" }, "← WORK"));
   // Title is shown in the sidebar, not repeated here in the main column.
 
   // Short intro/overview above the hero (HTML allowed — can include links).
