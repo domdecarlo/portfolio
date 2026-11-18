@@ -298,7 +298,7 @@ function makeTileCarousel(p, href) {
     const slide = el("a", { class: "tile-slide", href });
     slide.append(
       isVideo(src)
-        ? el("video", { src, muted: "", playsinline: "" })
+        ? loopVideo(src)
         : el("img", { src, alt: p.title, loading: "lazy" })
     );
     track.append(slide);
@@ -384,6 +384,19 @@ const currentProject = () => {
 };
 const isVideo = (src) => /\.(mp4|webm|mov)$/i.test(src);
 
+/* A muted, looping, autoplaying video — the stand-in for an animated GIF.
+   Muted/autoplay are set as PROPERTIES (not just attributes) so autoplay is
+   honored on a cold page refresh, not only after a click. */
+function loopVideo(src, attrs = {}) {
+  const v = el("video", { src, loop: "", playsinline: "", preload: "metadata", ...attrs });
+  v.muted = true;
+  v.playsInline = true;
+  v.autoplay = true;
+  v.setAttribute("autoplay", "");
+  v.addEventListener("canplay", () => { v.play().catch(() => {}); }, { once: true });
+  return v;
+}
+
 /* Normalize a YouTube/Vimeo (or already-embed) URL into an embeddable player URL. */
 function toEmbedUrl(url) {
   try {
@@ -426,7 +439,7 @@ function appendMedia(container, media, altBase) {
   (media || []).forEach((src) => {
     container.append(
       isVideo(src)
-        ? el("video", { class: "media", src, controls: "", playsinline: "" })
+        ? loopVideo(src, { class: "media" })
         : el("img", { class: "media", src, alt: altBase || "", loading: "lazy" })
     );
   });
@@ -475,17 +488,14 @@ function piEntry(container, c) {
     const src = c.video || c.image;
     const fig = el("figure", { class: "pi-image" });
     if (isVideo(src)) {
-      const v = el("video", { src, loop: "", playsinline: "", preload: "metadata" });
-      // Set muted/autoplay as PROPERTIES (not just attributes) so muted
-      // autoplay is honored on a cold page refresh, not only after a click.
-      v.muted = true;
-      v.playsInline = true;
+      let v;
       if (c.controls) {
+        v = el("video", { src, loop: "", playsinline: "", preload: "metadata" });
+        v.muted = true;
+        v.playsInline = true;
         v.controls = true;
       } else {
-        v.autoplay = true;
-        v.setAttribute("autoplay", "");
-        v.addEventListener("canplay", () => { v.play().catch(() => {}); }, { once: true });
+        v = loopVideo(src);
       }
       fig.append(v);
     } else {
@@ -1632,7 +1642,10 @@ function renderDetail() {
 }
 
 /* ---------- boot ---------- */
-document.addEventListener("DOMContentLoaded", () => {
+// Waits for the project files as well as the DOM — data.js loads those
+// asynchronously (see PROJECTS_READY there).
+const domReady = new Promise((r) => document.addEventListener("DOMContentLoaded", r));
+Promise.all([domReady, PROJECTS_READY]).then(() => {
   renderTopbar(document.body.dataset.page || "");
   renderSubhead();
   syncStackHeight();
@@ -1645,4 +1658,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initProjectPage();
   window.addEventListener("resize", syncStackHeight);
   window.addEventListener("load", syncStackHeight);
+  syncStackHeight(); // in case "load" already fired while projects were loading
 });
