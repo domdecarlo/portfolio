@@ -7,9 +7,9 @@
      2. add "<id>" to PROJECT_FILES in data.js (that list is the grid order)
 
    Each project is a grid tile on the home page and a page at /work/<id>.
-   That page is generated from this file, and pushing rebuilds it automatically
-   (.github/workflows/prerender.yml), so adding a project here is enough.
-   Run `node build-seo.mjs` yourself only to preview the change locally.
+   That page is generated from the project's file, and pushing rebuilds it
+   automatically (.github/workflows/prerender.yml). Run `node build-seo.mjs`
+   yourself only to preview the change locally.
 
    Core fields:
      id      unique, lowercase, no spaces
@@ -73,30 +73,30 @@
    ============================================================ */
 
 /* ---------- copy from here ----------
-project({ // Project Name
-  id: "project-id",                 // unique, lowercase, no spaces
+project({
+  id: "project-id",
   title: "Project Title",
   year: "2025",
-  tags: "DISCIPLINE, DISCIPLINE",   // shown on the home grid tile
-  cover: "assets/img/project/cover.jpg",
-  images: ["assets/img/project/cover.jpg"],  // grid-tile carousel
+  tags: "Brand Design",
+  cover: "assets/img/project-id/project-id-1.jpg",
+  images: [
+    "assets/img/project-id/project-id-1.jpg",
+  ],
 
-  // SIDEBAR — default structure (renders top-to-bottom exactly as listed).
   sidebar: [
     { title: "Project Title" },
     { text: "One-line description of the project." },
     { label: "Year", value: "2025" },
-    { label: "Discipline", value: "Brand Identity, ..." },
+    { label: "Discipline", value: "Brand Identity" },
+
     { heading: "Section One" },
     { text: "Body copy for the first section." },
-    { image: "assets/img/project/ref-2.jpg", caption: "Another reference." },
-
+    { image: "assets/img/project-id/sidebar/reference.jpg", caption: "A reference." },
   ],
 
-  // MAIN COLUMN — flat content blocks (text + image rows, grid 1|2|3)
   content: [
-    { images: ["assets/img/project/01.jpg"] },
-    { images: ["assets/img/project/02.jpg", "assets/img/project/03.jpg"] },
+    { images: ["assets/img/project-id/project-id-1.jpg"] },
+    { images: ["assets/img/project-id/project-id-2.jpg", "assets/img/project-id/project-id-3.jpg"], ratio: "1.91:1" },
   ],
 });
 ---------- to here ---------- */
