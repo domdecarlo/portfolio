@@ -1,6 +1,6 @@
 /* ============================================================
    main.js — renders top bar, Are.na feed, portfolio grid,
-   and project detail pages. Reads everything from data.js.
+   and project detail pages. Reads everything from content/site.js.
    ============================================================ */
 
 /* ---------- helpers ---------- */
@@ -19,7 +19,7 @@ const qs = (name) => new URLSearchParams(location.search).get(name);
 /* ---------- top bar (3 zones: left wordmark / center info / right nav) ---------- */
 /* Links are written without .html (GitHub Pages resolves /info -> info.html),
    but `data-page` on <body> still uses the filename as its internal key — it's
-   also what data.js keys `modeByPage` on. So compare pages by a normalized key
+   also what content/site.js keys `modeByPage` on. So compare pages by a normalized key
    instead of by raw string, letting the two forms differ freely.
    Returns null for anything that isn't a local page (http, mailto, #). */
 function pageKey(href) {
@@ -269,7 +269,7 @@ function renderArena() {
     } catch (err) {
       done = true;
       observer.disconnect();
-      status.textContent = "Couldn't load Are.na channel “" + channelSlug + "”. Check the slug in data.js.";
+      status.textContent = "Couldn't load Are.na channel “" + channelSlug + "”. Check the slug in content/site.js.";
     } finally {
       loading = false;
     }
@@ -370,17 +370,18 @@ function renderGrid() {
 
 /* ---------- helpers for project pages ---------- */
 /* A project's canonical URL slug and href. Prerendered pages are written to
-   work/<slug>.html — see build-seo.mjs, which must use this same slug rule —
+   work/<slug>.html — see scripts/build-seo.mjs, which must use this same slug rule —
    and served at /work/<slug>, since GitHub Pages resolves the extension.
    Root-relative, so the href is the same from any page depth. */
 const projectSlug = (p) => String(p.id).toLowerCase();
 const projectHref = (p) => `/work/${encodeURIComponent(projectSlug(p))}`;
 
 /* Which project this page shows. `?id=` wins (legacy project.html?id=… links);
-   otherwise fall back to the prerendered page's data-project-id (work/<id>/). */
+   otherwise fall back to the prerendered page's data-project-id (work/<id>/).
+   Matched by slug, so ?id=pena finds id "Pena" just as /work/pena does. */
 const currentProject = () => {
-  const id = qs("id") || document.body.dataset.projectId;
-  return PROJECTS.find((x) => x.id === id) || PROJECTS[0];
+  const id = String(qs("id") || document.body.dataset.projectId || "").toLowerCase();
+  return PROJECTS.find((x) => projectSlug(x) === id) || PROJECTS[0];
 };
 const isVideo = (src) => /\.(mp4|webm|mov)$/i.test(src);
 
@@ -1642,7 +1643,7 @@ function renderDetail() {
 }
 
 /* ---------- boot ---------- */
-// Waits for the project files as well as the DOM — data.js loads those
+// Waits for the project files as well as the DOM — content/site.js loads those
 // asynchronously (see PROJECTS_READY there).
 const domReady = new Promise((r) => document.addEventListener("DOMContentLoaded", r));
 Promise.all([domReady, PROJECTS_READY]).then(() => {

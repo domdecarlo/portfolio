@@ -1,8 +1,8 @@
 /* ============================================================
    SITE CONFIG
    Header/nav, Info page, Are.na feed, lightbox and page <head> tags live here.
-   Each project lives in its own file in projects/ — the field reference and a
-   copy-me template are in projects/_template.js.
+   Each project lives in its own file in content/projects/ — the field
+   reference and a copy-me template are in content/projects/_template.js.
    ============================================================ */
 
 const SITE = {
@@ -128,7 +128,7 @@ const SITE = {
 
   // ---- PAGE <head> TAGS ----
   // Title, Google description and link-preview card for each top-level page.
-  // build-seo.mjs writes these into the file's <head> (between the
+  // scripts/build-seo.mjs writes these into the file's <head> (between the
   // seo:start / seo:end comments) — edit here, not in the .html file.
   //   path         the page's public URL path
   //   type         og:type — "website" or "profile"
@@ -160,7 +160,7 @@ const SITE = {
 
 /* ============================================================
    PROJECTS
-   One file per project in projects/<id>.js. This list is the order they
+   One file per project in content/projects/<id>.js. This list is the order they
    appear on the home grid — add a new project's file name here.
    ============================================================ */
 const PROJECT_FILES = [
@@ -170,6 +170,7 @@ const PROJECT_FILES = [
   "newbabyironage",
   "ssd",
   "pena",
+  "apparel",
   "sfstateboldthinking",
   "aip",
   "waving",
@@ -181,7 +182,7 @@ function project(p) { PROJECTS.push(p); }
 
 /* Load each project file, in order, then resolve PROJECTS_READY — main.js waits
    on it before rendering. async=false keeps dynamically added scripts running
-   in the order they were added. build-seo.mjs reads the same files itself, so
+   in the order they were added. scripts/build-seo.mjs reads the same files itself, so
    none of this runs there (no `document`). */
 const PROJECTS_READY =
   typeof document === "undefined"
@@ -191,11 +192,11 @@ const PROJECTS_READY =
           (f) =>
             new Promise((resolve) => {
               const s = document.createElement("script");
-              s.src = `projects/${f}.js`;
+              s.src = `content/projects/${f}.js`;
               s.async = false;
               s.onload = resolve;
               s.onerror = () => {
-                console.error(`Couldn't load projects/${f}.js — is it in PROJECT_FILES but missing on disk?`);
+                console.error(`Couldn't load content/projects/${f}.js — is it in PROJECT_FILES but missing on disk?`);
                 resolve(); // one bad file shouldn't take down the whole site
               };
               document.head.append(s);

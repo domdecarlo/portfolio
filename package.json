@@ -1,5 +1,11 @@
 {
-  "dependencies": {
+  "name": "decarlo-design",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-seo.mjs",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
     "jsdom": "^29.1.1"
   }
 }

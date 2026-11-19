@@ -3,12 +3,12 @@
    Not loaded by the site — this file is just for reading and copying.
 
    To add a project:
-     1. copy the block at the bottom into projects/<id>.js
-     2. add "<id>" to PROJECT_FILES in data.js (that list is the grid order)
+     1. copy the block at the bottom into content/projects/<id>.js
+     2. add "<id>" to PROJECT_FILES in content/site.js (that list is the grid order)
 
    Each project is a grid tile on the home page and a page at /work/<id>.
    That page is generated from the project's file, and pushing rebuilds it
-   automatically (.github/workflows/prerender.yml). Run `node build-seo.mjs`
+   automatically (.github/workflows/prerender.yml). Run `npm run build`
    yourself only to preview the change locally.
 
    Core fields:
