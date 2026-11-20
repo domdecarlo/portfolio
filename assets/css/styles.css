@@ -237,6 +237,21 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   padding: 16px 14px 80px;
 }
 
+/* Prev / next arrows everywhere (tile carousel, project lightbox, board lightbox):
+   one SVG (assets/img/ui/nav-arrow.svg, an up arrow in a ring), masked so it
+   takes the button's text color and turned to point left / right. */
+.tcar-btn::before,
+.lb-nav::before,
+.ic-lb-nav::before {
+  content: "";
+  width: 100%; height: 100%;
+  background: currentColor;
+  -webkit-mask: url("../img/ui/nav-arrow.svg") center / contain no-repeat;
+  mask: url("../img/ui/nav-arrow.svg") center / contain no-repeat;
+}
+.tcar-btn.prev::before, .lb-prev::before, .ic-lb-prev::before { transform: rotate(-90deg); }
+.tcar-btn.next::before, .lb-next::before, .ic-lb-next::before { transform: rotate(90deg); }
+
 /* ---------------- ARE.NA FEED (left) ---------------- */
 .arena-feed { display: flex; flex-direction: column; gap: 18px; }
 .scrap { display: block; }
@@ -421,6 +436,40 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   width: 100%; height: auto; display: block;
   border: 1px solid var(--hairline);
 }
+
+/* gallery block: horizontal scroll strip <-> masonry, toggled in main.js */
+.detail.detail-wide { max-width: none; min-width: 0; }
+.detail .gallery { margin-bottom: 28px; }
+/* same segmented control as the Info page board toggle (.ic-toggle) */
+.detail .gallery-toggle {
+  display: inline-flex; gap: 0; margin-bottom: 14px;
+  border: 1px solid var(--ink); background: var(--paper);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.detail .gal-mode {
+  border: none; background: transparent; color: var(--muted);
+  padding: 5px 10px; cursor: pointer;
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+}
+.detail .gal-mode + .gal-mode { border-left: 1px solid var(--hairline); }
+.detail .gal-mode:hover { color: var(--ink); }
+.detail .gal-mode.on { background: var(--ink); color: var(--paper); }
+.detail .gallery-scroll .gallery-items {
+  display: flex; gap: 40px; overflow-x: scroll; overflow-y: hidden; padding-bottom: 10px;
+  scrollbar-width: thin; user-select: none; -webkit-user-select: none;
+}
+.detail .gallery .media { border: none; }
+.detail .gallery-scroll .media { -webkit-user-drag: none; }
+.detail .gallery-scroll .media {
+  width: auto; height: 60vh; max-width: none; flex: none;
+}
+/* masonry: every image, no captions, tight — same 4 / 3 / 2 column steps as the Scraps page */
+.detail .gallery-masonry .gallery-items { column-count: 4; column-gap: 8px; }
+.detail .gallery-masonry .media { width: 100%; margin-bottom: 8px; break-inside: avoid; }
+@media (max-width: 1200px) { .detail .gallery-masonry .gallery-items { column-count: 3; } }
+@media (max-width: 820px)  { .detail .gallery-masonry .gallery-items { column-count: 2; } }
+@media (max-width: 700px)  { .detail .gallery-scroll .media { height: 50vh; } }
 
 /* section-based project layout */
 /* flat content model: heading + text + image-row blocks */

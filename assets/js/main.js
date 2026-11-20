@@ -321,8 +321,8 @@ function makeTileCarousel(p, href) {
       d.addEventListener("click", guard(() => go(i)));
       dots.append(d);
     });
-    const prev = el("button", { class: "tcar-btn prev", "aria-label": "Previous" }, "‹");
-    const next = el("button", { class: "tcar-btn next", "aria-label": "Next" }, "›");
+    const prev = el("button", { class: "tcar-btn prev", "aria-label": "Previous" });
+    const next = el("button", { class: "tcar-btn next", "aria-label": "Next" });
     prev.addEventListener("click", guard(() => go(idx - 1)));
     next.addEventListener("click", guard(() => go(idx + 1)));
     car.append(prev, next, dots);
@@ -1205,8 +1205,8 @@ function renderInfoCanvas() {
     const cap = el("figcaption", { class: "ic-lb-cap" });
     const fig = el("figure", { class: "ic-lb-figure" }, img, cap);
     const close = el("button", { class: "ic-lb-close", "aria-label": "Close" }, "✕");
-    const prev = el("button", { class: "ic-lb-nav ic-lb-prev", "aria-label": "Previous" }, "‹");
-    const next = el("button", { class: "ic-lb-nav ic-lb-next", "aria-label": "Next" }, "›");
+    const prev = el("button", { class: "ic-lb-nav ic-lb-prev", "aria-label": "Previous" });
+    const next = el("button", { class: "ic-lb-nav ic-lb-next", "aria-label": "Next" });
     lb.append(close, prev, next, fig);
     document.body.append(lb);
     close.addEventListener("click", (e) => { e.stopPropagation(); closeLightbox(); });
@@ -1505,8 +1505,8 @@ function initLightbox() {
   const overlay = el("div", { class: "lightbox", "aria-hidden": "true" });
   overlay.style.background = bg;
   const closeBtn = el("button", { class: "lb-close", "aria-label": "Close" }, "✕");
-  const prevBtn = el("button", { class: "lb-nav lb-prev", "aria-label": "Previous" }, "‹");
-  const nextBtn = el("button", { class: "lb-nav lb-next", "aria-label": "Next" }, "›");
+  const prevBtn = el("button", { class: "lb-nav lb-prev", "aria-label": "Previous" });
+  const nextBtn = el("button", { class: "lb-nav lb-next", "aria-label": "Next" });
   const figure = el("figure", { class: "lb-figure" });
   const img = el("img", { class: "lb-img", alt: "" });
   const cap = el("figcaption", { class: "lb-cap" });
@@ -1598,6 +1598,50 @@ function renderDetail() {
         if (block.ratio) med.style.setProperty("--cell-ratio", String(block.ratio).replace(":", "/"));
         appendMedia(med, block.images, p.title);
         mount.append(med);
+      }
+      if (block.gallery?.length) {
+        // { gallery: [...], view?: "scroll" | "masonry" } → one set of images with a
+        // toggle between a horizontal scroll strip and a masonry grid.
+        const first = block.view || "scroll";
+        const gal = el("div", { class: "gallery gallery-" + first });
+        const bar = el("div", { class: "gallery-toggle" });
+        const strip = el("div", { class: "gallery-items" });
+        appendMedia(strip, block.gallery, p.title);
+        // both views use the full width of the column (not the 900px reading width)
+        mount.classList.add("detail-wide");
+        ["scroll", "masonry"].forEach((view) => {
+          const btn = el("button", { type: "button", class: "gal-mode" + (view === first ? " on" : ""), "data-view": view }, view === "masonry" ? "all" : view);
+          btn.addEventListener("click", () => {
+            gal.classList.remove("gallery-scroll", "gallery-masonry");
+            gal.classList.add("gallery-" + view);
+            bar.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+            strip.scrollLeft = 0;
+          });
+          bar.append(btn);
+        });
+
+        // scroll view: mouse wheel and click-drag both move the strip sideways
+        strip.addEventListener("wheel", (e) => {
+          if (!gal.classList.contains("gallery-scroll") || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+          e.preventDefault();
+          strip.scrollLeft += e.deltaY;
+        }, { passive: false });
+        let down = null, moved = false;
+        strip.addEventListener("pointerdown", (e) => {
+          if (e.pointerType !== "mouse" || !gal.classList.contains("gallery-scroll")) return;
+          down = { x: e.clientX, left: strip.scrollLeft }; moved = false;
+        });
+        window.addEventListener("pointermove", (e) => {
+          if (!down) return;
+          const dx = e.clientX - down.x;
+          if (Math.abs(dx) > 4) moved = true;
+          if (moved) strip.scrollLeft = down.left - dx;
+        });
+        window.addEventListener("pointerup", () => { down = null; });
+        // a drag shouldn't count as a click on an image (that opens the lightbox)
+        strip.addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+        gal.append(bar, strip);
+        mount.append(gal);
       }
       if (block.embed) {
         // { embed: "https://youtube.com/..." | vimeo | embed url } → responsive player

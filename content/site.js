@@ -175,6 +175,7 @@ const PROJECT_FILES = [
   "aip",
   "waving",
   "pasta",
+  "drawings",
 ];
 
 const PROJECTS = [];
