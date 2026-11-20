@@ -389,12 +389,21 @@ const isVideo = (src) => /\.(mp4|webm|mov)$/i.test(src);
    Muted/autoplay are set as PROPERTIES (not just attributes) so autoplay is
    honored on a cold page refresh, not only after a click. */
 function loopVideo(src, attrs = {}) {
-  const v = el("video", { src, loop: "", playsinline: "", preload: "metadata", ...attrs });
+  // iOS Safari only autoplays when `muted` is a real attribute (the property
+  // alone isn't enough) and ignores preload="metadata", so canplay never fires
+  // there — hence preload=auto and the extra play() triggers below.
+  const v = el("video", { src, loop: "", muted: "", playsinline: "", "webkit-playsinline": "", autoplay: "", preload: "auto", ...attrs });
   v.muted = true;
   v.playsInline = true;
   v.autoplay = true;
-  v.setAttribute("autoplay", "");
-  v.addEventListener("canplay", () => { v.play().catch(() => {}); }, { once: true });
+  const kick = () => { v.play().catch(() => {}); };
+  v.addEventListener("loadeddata", kick, { once: true });
+  v.addEventListener("canplay", kick, { once: true });
+  // Low Power Mode / a blocked first attempt: retry on the first touch or when scrolled into view
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver((es, o) => { if (es.some((e) => e.isIntersecting && v.paused)) kick(); }).observe(v);
+  }
+  document.addEventListener("touchstart", () => { if (v.paused) kick(); }, { once: true, passive: true });
   return v;
 }
 
