@@ -15,11 +15,11 @@ project({
 
   sidebar: [
     { title: "Apparel" },
-    { text: "Shirts and clothing I've designed and illustrated: for bands, for friends, and for me." },
+    { text: "Shirts and clothing I've designed and illustrated." },
     { label: "Year", value: "Ongoing" },
     { label: "Discipline", value: "Illustration, Apparel Design" },
     { image: "assets/img/apparel/sidebar/screen-in-the-shower.jpg", caption: "The old wash out station." },
-    { text: "Most of these start as drawings and collage, good mfa brain dump." },
+    { text: "Most of these start as drawings and a good mfa brain dump." },
   ],
 
   content: [

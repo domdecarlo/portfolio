@@ -1590,6 +1590,16 @@ function renderDetail() {
         mount.append(el("div", { class: "content-text" }, el("p", { html: block })));
         return;
       }
+      if (block.switch?.length) {
+        // { switch: [{ label, href? }, …] } → the segmented toggle (same look as the
+        // gallery / Info board toggles) used as links between related pages. The
+        // entry with no href is the page you're on and shows as selected.
+        const bar = el("nav", { class: "view-switch", "aria-label": "Views" });
+        block.switch.forEach((s) => bar.append(s.href
+          ? el("a", { class: "gal-mode", href: s.href }, s.label)
+          : el("span", { class: "gal-mode on", "aria-current": "page" }, s.label)));
+        mount.append(bar);
+      }
       if (block.heading) {
         mount.append(el("h2", { class: "content-heading" }, block.heading));
       }
@@ -1601,7 +1611,7 @@ function renderDetail() {
       }
       if (block.images?.length) {
         const cols = block.grid || Math.min(block.images.length, 3);
-        const layout = cols >= 3 ? "grid-3" : cols === 2 ? "grid-2" : "full";
+        const layout = cols >= 4 ? "grid-4" : cols === 3 ? "grid-3" : cols === 2 ? "grid-2" : "full";
         // block.ratio (e.g. "16/9") sets a fixed crop box for the images.
         const med = el("div", { class: "media-rows media-" + layout + (block.ratio ? " media-ratio" : "") });
         if (block.ratio) med.style.setProperty("--cell-ratio", String(block.ratio).replace(":", "/"));
@@ -1676,7 +1686,7 @@ function renderDetail() {
       if (s.heading) sec.append(el("h2", { class: "section-heading" }, s.heading));
       (s.text || []).forEach((t) => sec.append(el("p", { html: t })));
       if (s.images?.length) {
-        // layout: "full" (default, stacked) | "grid-2" | "grid-3"
+        // layout: "full" (default, stacked) | "grid-2" | "grid-3" | "grid-4"
         const med = el("div", { class: "media-rows media-" + (s.layout || "full") });
         appendMedia(med, s.images, p.title);
         sec.append(med);

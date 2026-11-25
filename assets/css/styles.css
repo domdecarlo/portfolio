@@ -441,7 +441,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .detail.detail-wide { max-width: none; min-width: 0; }
 .detail .gallery { margin-bottom: 28px; }
 /* same segmented control as the Info page board toggle (.ic-toggle) */
-.detail .gallery-toggle {
+.detail .gallery-toggle,
+.detail .view-switch {
   display: inline-flex; gap: 0; margin-bottom: 14px;
   border: 1px solid var(--ink); background: var(--paper);
   font-family: var(--mono); font-size: 10px;
@@ -455,6 +456,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .detail .gal-mode + .gal-mode { border-left: 1px solid var(--hairline); }
 .detail .gal-mode:hover { color: var(--ink); }
 .detail .gal-mode.on { background: var(--ink); color: var(--paper); }
+.detail .view-switch { display: flex; width: max-content; margin: 4px 0 18px; }
+.detail .view-switch .gal-mode { text-decoration: none; display: inline-block; }
 .detail .gallery-scroll .gallery-items {
   display: flex; gap: 40px; overflow-x: scroll; overflow-y: hidden; padding-bottom: 10px;
   scrollbar-width: thin; user-select: none; -webkit-user-select: none;
@@ -556,8 +559,14 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
+.detail .media-rows.media-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
 .detail .media-grid-2 .media,
-.detail .media-grid-3 .media {
+.detail .media-grid-3 .media,
+.detail .media-grid-4 .media {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
@@ -1218,6 +1227,7 @@ body[data-page="info.html"] .right { overflow: hidden; padding: 0; }
      (no 2-up/3-up grids) */
   .detail .media-rows.media-grid-2,
   .detail .media-rows.media-grid-3 { grid-template-columns: 1fr; }
+  .detail .media-rows.media-grid-4 { grid-template-columns: repeat(2, 1fr); }
 
   /* hide sidebar reference images, and swap the "Info" label for the back
      link (which is removed from the main column) */

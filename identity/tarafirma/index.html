@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dominic DeCarlo — Tara Firma Farms Identity System</title>
+<meta name="description" content="The Tara Firma Farms identity system: logo suite, logo rules, color and type, the loop, messaging, motion, icon motion, loading and photography.">
+<link rel="canonical" href="https://decarlo.design/identity/tarafirma/">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../../favicon.ico" sizes="any">
+<style>
+  :root {
+    --ink: #111111; --muted: #7A7A7A; --hairline: #e6e6e6; --accent: #2F8F3A; --linen: #F4EFE4;
+    --mono: "SFMono-Regular", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --grotesk: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--ink); font-family: var(--grotesk); -webkit-font-smoothing: antialiased; }
+  a { color: var(--ink); }
+  a:hover { color: var(--accent); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header { position: sticky; top: 0; z-index: 5; background: #fff; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; }
+  .name { font-weight: 700; font-size: 22px; letter-spacing: -0.01em; text-decoration: none; }
+  .back { font-family: var(--mono); font-size: 12px; color: var(--muted); text-decoration: none; }
+
+  main { padding: 6px 22px 48px; max-width: 1600px; margin: 0 auto; }
+  /* same segmented control as the site's gallery / Info board toggles */
+  .view-switch { display: inline-flex; margin-bottom: 18px; border: 1px solid var(--ink); background: #fff; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .view-switch .gal-mode { color: var(--muted); padding: 5px 10px; text-decoration: none; display: inline-block; }
+  .view-switch .gal-mode + .gal-mode { border-left: 1px solid var(--hairline); }
+  .view-switch a.gal-mode:hover { color: var(--ink); }
+  .view-switch .gal-mode.on { background: var(--ink); color: #fff; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+  h1 { margin: 8px 0 18px; font-size: 22px; line-height: 1.15; font-weight: 700; text-transform: uppercase; }
+
+  /* section tabs: the same segmented toggle as .view-switch */
+  nav.tabs { display: flex; flex-wrap: wrap; width: max-content; max-width: 100%; margin-bottom: 14px; border: 1px solid var(--ink); background: #fff; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  nav.tabs button { font: inherit; letter-spacing: inherit; text-transform: inherit; border: none; background: transparent; color: var(--muted); padding: 5px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+  nav.tabs button + button { border-left: 1px solid var(--hairline); }
+  nav.tabs button:hover { color: var(--ink); }
+  nav.tabs button .n { opacity: 0.6; }
+  nav.tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
+
+  .stage { position: relative; width: 100%; aspect-ratio: 1440 / 960; overflow: hidden; background: var(--linen); }
+  .stage iframe { position: absolute; left: 0; top: 0; width: 1440px; height: 960px; border: 0; transform-origin: 0 0; }
+
+  .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; font-family: var(--mono); font-size: 12px; }
+  .pager button { font: inherit; background: none; border: 0; padding: 6px 0; cursor: pointer; color: var(--muted); }
+  .pager button:hover { color: var(--ink); }
+  .pager button:disabled { visibility: hidden; }
+  .pager .count { color: var(--muted); }
+  .open { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 18px; }
+  .open a { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <a class="name" href="../../">Dominic DeCarlo</a>
+  <a class="back" href="../../work/tarafirma">← TARA FIRMA CASE STUDY</a>
+</header>
+<main>
+  <nav class="view-switch" aria-label="Views">
+    <a class="gal-mode" href="../../work/tarafirma">Case study</a><span class="gal-mode on" aria-current="page">Identity system</span>
+  </nav>
+  <div class="eyebrow">IDENTITY SYSTEM</div>
+  <h1>Tara Firma Farms</h1>
+
+  <nav class="tabs" role="tablist" aria-label="Identity system sections"></nav>
+
+  <div class="stage" id="stage">
+    <iframe id="frame" title="Identity system frame" loading="eager"></iframe>
+  </div>
+
+  <div class="pager">
+    <button id="prev" type="button">← <span></span></button>
+    <span class="count" id="count"></span>
+    <button id="next" type="button"><span></span> →</button>
+  </div>
+  <div class="open">Use ← → to move between sections. <a id="solo" href="#" target="_blank" rel="noopener">Open this frame on its own ↗</a></div>
+</main>
+
+<script>
+  const FRAMES = [
+    ["01", "Logo suite", "01-logo-suite.html"],
+    ["02", "Logo rules", "02-logo-rules.html"],
+    ["03", "Color and type", "03-color-and-type.html"],
+    ["04", "The loop", "04-the-loop.html"],
+    ["05", "Messaging", "05-messaging.html"],
+    ["06", "Motion", "06-motion.html"],
+    ["07", "Icon motion", "07-icon-motion.html"],
+    ["08", "Loading", "08-loading.html"],
+    ["09", "Photography", "09-photography.html"],
+  ];
+  const tabs = document.querySelector("nav.tabs");
+  const frame = document.getElementById("frame");
+  const stage = document.getElementById("stage");
+  const prev = document.getElementById("prev"), next = document.getElementById("next");
+  let cur = -1;
+
+  FRAMES.forEach(([n, name], i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.setAttribute("role", "tab"); b.id = "tab-" + n;
+    b.innerHTML = `<span class="n">${n}</span>${name}`;
+    b.addEventListener("click", () => go(i));
+    tabs.append(b);
+  });
+
+  function go(i, push = true) {
+    i = Math.max(0, Math.min(FRAMES.length - 1, i));
+    if (i === cur) return;
+    cur = i;
+    const [n, name, file] = FRAMES[i];
+    frame.src = "html/" + file;
+    frame.title = `Identity ${n}: ${name}`;
+    document.getElementById("solo").href = "html/" + file;
+    [...tabs.children].forEach((b, j) => b.setAttribute("aria-selected", String(j === i)));
+    prev.disabled = i === 0; next.disabled = i === FRAMES.length - 1;
+    prev.querySelector("span").textContent = i > 0 ? FRAMES[i - 1][1].toUpperCase() : "";
+    next.querySelector("span").textContent = i < FRAMES.length - 1 ? FRAMES[i + 1][1].toUpperCase() : "";
+    document.getElementById("count").textContent = `${n} / ${String(FRAMES.length).padStart(2, "0")}`;
+    if (push) history.replaceState(null, "", "#" + n);
+  }
+
+  // Frames are authored at a fixed 1440×960; scale to fit the stage width.
+  function fit() { frame.style.transform = `scale(${stage.clientWidth / 1440})`; }
+  new ResizeObserver(fit).observe(stage);
+
+  prev.addEventListener("click", () => go(cur - 1));
+  next.addEventListener("click", () => go(cur + 1));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea")) return;
+    if (e.key === "ArrowLeft") go(cur - 1);
+    if (e.key === "ArrowRight") go(cur + 1);
+  });
+  // Arrow keys still work after clicking into the frame.
+  frame.addEventListener("load", () => {
+    try { frame.contentWindow.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") go(cur - 1);
+      if (e.key === "ArrowRight") go(cur + 1);
+    }); } catch (_) {}
+  });
+  window.addEventListener("hashchange", () => fromHash());
+  function fromHash() {
+    const n = location.hash.slice(1);
+    const i = FRAMES.findIndex((f) => f[0] === n);
+    go(i < 0 ? 0 : i, false);
+  }
+  fromHash();
+  fit();
+</script>
+</body>
+</html>

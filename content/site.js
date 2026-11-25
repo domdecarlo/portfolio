@@ -166,8 +166,10 @@ const SITE = {
 const PROJECT_FILES = [
   "strava",
   "solv",
+  "tarafirma",
   "sfstate",
   "newbabyironage",
+  "drawings",
   "ssd",
   "pena",
   "apparel",
@@ -175,7 +177,6 @@ const PROJECT_FILES = [
   "aip",
   "waving",
   "pasta",
-  "drawings",
 ];
 
 const PROJECTS = [];
