@@ -8,9 +8,9 @@ project({
   lightboxCaption: "#FFFFFF",
   cover: "assets/img/pasta/pasta-1-poster.jpg",
   images: [
+    "assets/img/pasta/pasta-2.jpg",
     "assets/img/pasta/pasta-3.jpg",
     "assets/img/pasta/pasta-1.mp4",
-    "assets/img/pasta/pasta-2.jpg",
   ],
 
   sidebar: [
