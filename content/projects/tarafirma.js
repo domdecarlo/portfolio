@@ -17,7 +17,7 @@ project({
     { label: "Discipline", value: "Brand identity, motion, art direction" },
     { text: "Rebranding work for Tara Firma Farms, a regenerative farm in Petaluma. I worked there for awhile and developed its first identity." },
       { image: "assets/img/tarafirma/sidebar/tarafirmafarms-old.png", caption: "I image traced this with a pirated Illustrator CS5. Pretty good!" },
-      \
+      
     { text: "I worked at this farm when I left school for awhile - I dug holes for fences, I fed cows, and I built my self-image. I got to live on the land and found myself really appreciating that connection in a way that ultimately led me back to a creative field. I felt connected and I wanted everyone to feel it too. I heard recently the farm was closing and I wanted to update the site for its future. I remember vectoring the original logo years ago - updating it now felt like honoring that time of life." },
     { image: "assets/img/tarafirma/sidebar/connected.gif", caption: "It's all connected" },
 
