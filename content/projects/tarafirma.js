@@ -6,7 +6,7 @@ project({
   seoDescription: "Rebranding Tara Firma Farms, a regenerative farm in Petaluma: a cross-stitch identity built on the line From Scraps. To Pastures.",
   cover: "assets/img/tarafirma/cover.jpg",
   images: [
-    "assets/img/tarafirma/hero-growth-over-photo.mp4",
+    "assets/img/tarafirma/hills-splash-overlay.mp4",
     "assets/img/tarafirma/logo-field.jpg",
     "assets/img/tarafirma/egg-carton.jpg",
   ],
