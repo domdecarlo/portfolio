@@ -21,14 +21,14 @@ project({
 
 
     { heading: "From Scraps. To Pastures." },
-    { text: "The place had a few different owners when I was there - The last has a connected to Good Earth Natural Foods, we started getting all their scraps for compost! It was great, free food for the pigs, free compost - a real great smell always from the barn. I started thinking about how when that happened it felt so much more cyclical - we always championed permaculture, but here it was at scale. The compost feeds the pasture and the pasture feeds the herd. All these nutrients just gets rearranged, organized, and reused. I wanted to use that framing as the direction of the new brand." },
+    { text: "The place had a few different owners when I was there - The last had a connection to Good Earth Natural Foods - we started getting all their scraps for compost! It was great, free food for the pigs, free compost - a real great smell always from the barn. I started thinking about how when that happened it felt so much more cyclical - we always championed permaculture, but here it was at scale. The compost feeds the pasture and the pasture feeds the herd. All these nutrients get rearranged, organized, and reused. I wanted to use that framing as the direction of the new brand." },
 
 
     { heading: "A quilt is something human." },
-    { text: "Cross stitching and quilting go together with rural culture. My grandmother in Ohio made tons of quilts and came from a very rural area and I always felt this connection when I lived on the property. I wanted to use this motiff, of stitches, each representing a scrap of food, an organizational unit of the farm, a single person in the community. A cross-stitch picture is built one cross at a time - the same way that compost and ultimately our communities are built." },
+    { text: "Cross stitching and quilting go together with rural culture. My grandmother in Ohio made tons of quilts and came from a very rural area and I always felt this connection when I lived on the property. I wanted to use this motiff, of stitches, each representing a scrap of food, an organizational unit of the farm, a single person in the community. A cross-stitch picture is built one cross at a time - the same way that compost and ultimately our communities are built. Here was the wrapper to position the deliverables." },
     { image: "assets/img/tarafirma/sidebar/quilt.jpg", caption: "Every phase of the production was permeated by giving and sharing." },
 
-    { text: "I think this new system captures the essence of the new state of the farm - as a meeting place, a space to hold events and connect with land." },
+    { text: "I think this new system captures the essence of the new state of the farm - as a meeting place, a space to hold events and connect." },
   ],
 
   content: [
